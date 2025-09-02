@@ -28,6 +28,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // TimeBoxes - Resource routes  
     Route::resource('time-boxes', TimeBoxController::class);
+    Route::patch('/time-boxes/{timeBox}/time', [TimeBoxController::class, 'updateTime'])->name('time-boxes.update-time');
 
     // Rotas adicionais específicas (se necessário futuramente)
     Route::patch('tasks/{task}/status', [TaskController::class, 'updateStatus'])->name('tasks.status');

@@ -14,22 +14,76 @@
                 </div>
 
                 <div class="flex items-center gap-3">
+                    <!-- Search Bar -->
+                    <div class="relative">
+                        <Search class="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
+                        <input v-model="searchQuery" @input="debouncedSearch" type="text" placeholder="Search tasks..."
+                            class="pl-10 pr-4 py-2 bg-slate-800/50 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-green-400/20 focus:border-green-400/50 transition-all" />
+                    </div>
+
+                    <!-- Filter Dropdown -->
                     <DropdownMenu>
                         <DropdownMenuTrigger as-child>
                             <Button variant="outline" size="sm"
-                                class="border-slate-700 bg-slate-800/50 hover:bg-slate-800">
+                                class="border-slate-700 bg-slate-800/50 hover:bg-slate-800 relative">
                                 <Filter class="w-4 h-4 mr-2" />
                                 Filter
+                                <Badge v-if="activeFiltersCount > 0"
+                                    class="ml-2 bg-green-400/20 text-green-400 border-green-400/30 px-1.5 py-0 h-5 min-w-[20px]">
+                                    {{ activeFiltersCount }}
+                                </Badge>
                             </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" class="w-56 bg-slate-900 border-slate-700">
-                            <DropdownMenuItem>All Tasks</DropdownMenuItem>
-                            <DropdownMenuItem>Todo</DropdownMenuItem>
-                            <DropdownMenuItem>In Progress</DropdownMenuItem>
-                            <DropdownMenuItem>Done</DropdownMenuItem>
-                            <DropdownMenuSeparator class="bg-slate-700" />
-                            <DropdownMenuItem>High Priority</DropdownMenuItem>
-                            <DropdownMenuItem>Due Today</DropdownMenuItem>
+                        <DropdownMenuContent align="end" class="w-64 bg-slate-900 border-slate-700 p-4">
+                            <div class="space-y-4">
+                                <!-- Status Filter -->
+                                <div class="space-y-2">
+                                    <label class="text-xs font-medium text-slate-400">Status</label>
+                                    <select v-model="filters.status" @change="applyFilters"
+                                        class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-md text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-green-400/20 focus:border-green-400/50">
+                                        <option value="">All Status</option>
+                                        <option value="todo">Todo</option>
+                                        <option value="in_progress">In Progress</option>
+                                        <option value="blocked">Blocked</option>
+                                        <option value="done">Done</option>
+                                    </select>
+                                </div>
+
+                                <!-- Priority Filter -->
+                                <div class="space-y-2">
+                                    <label class="text-xs font-medium text-slate-400">Priority</label>
+                                    <select v-model="filters.priority" @change="applyFilters"
+                                        class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-md text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-green-400/20 focus:border-green-400/50">
+                                        <option value="">All Priorities</option>
+                                        <option value="low">Low</option>
+                                        <option value="medium">Medium</option>
+                                        <option value="high">High</option>
+                                        <option value="urgent">Urgent</option>
+                                    </select>
+                                </div>
+
+                                <!-- Due Date Filter -->
+                                <div class="space-y-2">
+                                    <label class="text-xs font-medium text-slate-400">Due Date</label>
+                                    <select v-model="filters.due_filter" @change="applyFilters"
+                                        class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-md text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-green-400/20 focus:border-green-400/50">
+                                        <option value="">All Dates</option>
+                                        <option value="overdue">Overdue</option>
+                                        <option value="today">Due Today</option>
+                                        <option value="week">Next 7 Days</option>
+                                        <option value="month">Next Month</option>
+                                    </select>
+                                </div>
+
+                                <DropdownMenuSeparator class="bg-slate-700" />
+
+                                <!-- Clear Filters Button -->
+                                <Button v-if="activeFiltersCount > 0" @click="clearFilters" variant="ghost" size="sm"
+                                    class="w-full text-red-400 hover:bg-red-400/10">
+                                    <X class="w-4 h-4 mr-2" />
+                                    Clear All Filters
+                                </Button>
+                            </div>
                         </DropdownMenuContent>
                     </DropdownMenu>
 
@@ -39,6 +93,39 @@
                         New Task
                     </Button>
                 </div>
+            </div>
+
+            <!-- Active Filters Display -->
+            <div v-if="activeFiltersCount > 0" class="flex items-center gap-2 flex-wrap">
+                <span class="text-xs text-slate-400">Active filters:</span>
+
+                <Badge v-if="filters.status" class="bg-slate-800 text-slate-300 border-slate-700 pr-1">
+                    Status: {{ formatStatus(filters.status) }}
+                    <button @click="filters.status = ''; applyFilters()" class="ml-2 hover:text-red-400">
+                        <X class="w-3 h-3" />
+                    </button>
+                </Badge>
+
+                <Badge v-if="filters.priority" :class="getPriorityClasses(filters.priority) + ' pr-1'">
+                    Priority: {{ filters.priority.toUpperCase() }}
+                    <button @click="filters.priority = ''; applyFilters()" class="ml-2 hover:text-red-400">
+                        <X class="w-3 h-3" />
+                    </button>
+                </Badge>
+
+                <Badge v-if="filters.due_filter" class="bg-orange-400/20 text-orange-400 border-orange-400/30 pr-1">
+                    Due: {{ formatDueFilter(filters.due_filter) }}
+                    <button @click="filters.due_filter = ''; applyFilters()" class="ml-2 hover:text-red-400">
+                        <X class="w-3 h-3" />
+                    </button>
+                </Badge>
+
+                <Badge v-if="searchQuery" class="bg-purple-400/20 text-purple-400 border-purple-400/30 pr-1">
+                    Search: "{{ searchQuery }}"
+                    <button @click="searchQuery = ''; applyFilters()" class="ml-2 hover:text-red-400">
+                        <X class="w-3 h-3" />
+                    </button>
+                </Badge>
             </div>
 
             <!-- Stats Cards -->
@@ -103,7 +190,17 @@
             <!-- Tasks List -->
             <Card class="bg-slate-900/50 border-slate-800/30 backdrop-blur-xl">
                 <CardContent class="p-0">
-                    <div class="divide-y divide-slate-800/30">
+                    <div v-if="tasks.data.length === 0" class="p-12 text-center">
+                        <div class="w-20 h-20 mx-auto mb-4 rounded-lg bg-slate-800/50 flex items-center justify-center">
+                            <CheckSquare class="w-10 h-10 text-slate-600" />
+                        </div>
+                        <h3 class="text-lg font-medium text-slate-300 mb-2">No tasks found</h3>
+                        <p class="text-sm text-slate-500">
+                            {{ activeFiltersCount > 0 ? 'Try adjusting your filters' : "Create your first task" }}
+                        </p>
+                    </div>
+
+                    <div v-else class="divide-y divide-slate-800/30">
                         <div v-for="task in tasks.data" :key="task.id"
                             class="p-6 hover:bg-slate-800/30 transition-colors cursor-pointer group"
                             @click.stop="openEditModal(task)">
@@ -225,8 +322,9 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { router, useForm } from '@inertiajs/vue3'
+import { debounce } from 'lodash'
 import Layout from '@/layouts/Layout.vue'
 import TaskFormModal from '@/components/TaskFormModal.vue'
 import TaskCountdown from '@/components/TaskCountdown.vue'
@@ -243,7 +341,9 @@ import {
     Edit,
     Copy,
     Trash2,
-    Square
+    Square,
+    Search,
+    X
 } from 'lucide-vue-next'
 import {
     Card,
@@ -263,6 +363,19 @@ import {
 
 const props = defineProps({
     tasks: Object,
+    filters: {
+        type: Object,
+        default: () => ({})
+    },
+    stats: {
+        type: Object,
+        default: () => ({
+            total: 0,
+            in_progress: 0,
+            completed: 0,
+            due_today: 0
+        })
+    }
 })
 
 // Modal state
@@ -271,27 +384,74 @@ const editingTask = ref(null)
 const formErrors = ref({})
 const formProcessing = ref(false)
 
+// Filter state
+const filters = ref({
+    status: props.filters?.status || '',
+    priority: props.filters?.priority || '',
+    due_filter: props.filters?.due_filter || '',
+})
+
+const searchQuery = ref(props.filters?.search || '')
+
 // Form for handling submissions
 const form = useForm({})
 
-// Computed stats baseado nas tasks
-const stats = computed(() => {
-    const allTasks = props.tasks.data || []
-    return {
-        total: allTasks.length,
-        in_progress: allTasks.filter(t => t.status === 'in_progress').length,
-        completed: allTasks.filter(t => t.status === 'done').length,
-        due_today: allTasks.filter(t => {
-            if (!t.due_date) return false
-            const today = new Date().toDateString()
-            return new Date(t.due_date).toDateString() === today
-        }).length
-    }
+// Computed active filters count
+const activeFiltersCount = computed(() => {
+    let count = 0
+    if (filters.value.status) count++
+    if (filters.value.priority) count++
+    if (filters.value.due_filter) count++
+    if (searchQuery.value) count++
+    return count
 })
+
+// Apply filters
+const applyFilters = () => {
+    router.get(route('tasks.index'), {
+        status: filters.value.status || undefined,
+        priority: filters.value.priority || undefined,
+        due_filter: filters.value.due_filter || undefined,
+        search: searchQuery.value || undefined,
+    }, {
+        preserveState: true,
+        preserveScroll: true,
+    })
+}
+
+// Debounced search
+const debouncedSearch = debounce(() => {
+    applyFilters()
+}, 500)
+
+// Clear all filters
+const clearFilters = () => {
+    filters.value = {
+        status: '',
+        priority: '',
+        due_filter: '',
+    }
+    searchQuery.value = ''
+    applyFilters()
+}
 
 // Utility functions
 const formatType = (type) => {
     return type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())
+}
+
+const formatStatus = (status) => {
+    return status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())
+}
+
+const formatDueFilter = (filter) => {
+    const labels = {
+        'overdue': 'Overdue',
+        'today': 'Due Today',
+        'week': 'Next 7 Days',
+        'month': 'Next Month'
+    }
+    return labels[filter] || filter
 }
 
 const formatDate = (date) => {
@@ -350,7 +510,6 @@ const handleTaskSubmit = ({ data, isEditing, taskId }) => {
         router.put(route('tasks.update', taskId), data, {
             onSuccess: () => {
                 closeTaskModal()
-                router.reload({ only: ['tasks'] })
             },
             onError: (errors) => {
                 formErrors.value = errors
@@ -363,7 +522,6 @@ const handleTaskSubmit = ({ data, isEditing, taskId }) => {
         router.post(route('tasks.store'), data, {
             onSuccess: () => {
                 closeTaskModal()
-                router.reload({ only: ['tasks'] })
             },
             onError: (errors) => {
                 formErrors.value = errors
@@ -377,7 +535,14 @@ const handleTaskSubmit = ({ data, isEditing, taskId }) => {
 
 // Navigation functions
 const navigateToPage = (page) => {
-    router.visit(route('tasks.index', { page }))
+    router.get(route('tasks.index'), {
+        ...filters.value,
+        search: searchQuery.value,
+        page
+    }, {
+        preserveState: true,
+        preserveScroll: true,
+    })
 }
 
 // Actions
@@ -403,14 +568,12 @@ const duplicateTask = (task) => {
         due_date: ''
     }
 
-    router.post(route('tasks.store'), duplicatedData, {
-        onSuccess: () => {
-            // Task will be added to the list automatically
-        }
-    })
+    router.post(route('tasks.store'), duplicatedData)
 }
 
 const deleteTask = (taskId) => {
-    router.delete(route('tasks.destroy', taskId))
+    if (confirm('Are you sure you want to delete this task?')) {
+        router.delete(route('tasks.destroy', taskId))
+    }
 }
 </script>
