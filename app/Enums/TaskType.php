@@ -8,7 +8,7 @@ enum TaskType: string
     case WORK = 'work';
     case QUESTION = 'question';
     case QUICK_NOTE = 'quick_note';
-    case REMINDER = 'reminder'; // corrigi o typo "remimber"
+    case REMINDER = 'reminder';
     case HOUSE = 'house';
     case RANDOM = 'random';
 }

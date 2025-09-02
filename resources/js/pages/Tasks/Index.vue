@@ -252,7 +252,7 @@ import {
 import {
     Button,
 } from '@/components/ui/button'
-import { Badge } from 'lucide-vue-next'
+import { Badge } from '@/components/ui/badge'
 import {
     DropdownMenu,
     DropdownMenuContent,
