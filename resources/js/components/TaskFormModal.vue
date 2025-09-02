@@ -1,199 +1,228 @@
-<!-- resources/js/components/TaskFormModal.vue -->
 <template>
     <Dialog :open="isOpen" @update:open="handleOpenChange">
-        <DialogContent class="w-[70vw] min-w-[800px] max-h-[95vh] overflow-y-auto bg-slate-900 border-slate-800">
+        <DialogContent class="w-[600px] max-w-[90vw] max-h-[90vh] overflow-y-auto bg-slate-900 border-slate-800">
             <DialogHeader>
                 <DialogTitle
                     class="text-2xl font-bold bg-gradient-to-r from-green-400 to-emerald-400 bg-clip-text text-transparent">
                     {{ isEditing ? 'Edit Task' : 'Create New Task' }}
                 </DialogTitle>
                 <DialogDescription class="text-slate-400">
-                    {{ isEditing ? 'Update the task details below' : 'Fill in the details below to create a new task' }}
+                    {{ isEditing ? 'Update the task details below' : 'Fill in the details to create a new task' }}
                 </DialogDescription>
             </DialogHeader>
 
-            <form @submit.prevent="submit" class="space-y-8 py-4">
-                <!-- Basic Information -->
-                <div class="space-y-6">
-                    <h3 class="text-lg font-semibold text-slate-200 border-b border-slate-800/30 pb-3">
-                        Basic Information
-                    </h3>
+            <form @submit.prevent="submit" class="space-y-6 py-4">
+                <!-- Title -->
+                <div class="space-y-2">
+                    <label for="title" class="block text-sm font-medium text-slate-300">
+                        Title <span class="text-red-400">*</span>
+                    </label>
+                    <input id="title" v-model="form.title" type="text" required placeholder="What needs to be done?"
+                        class="w-full px-4 py-2.5 bg-slate-800/50 border border-slate-700/50 rounded-lg text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-green-400/20 focus:border-green-400/50 transition-all"
+                        :class="{ 'border-red-400/50 focus:ring-red-400/20': errors.title }" @keydown.enter.prevent />
+                    <p v-if="errors.title" class="text-red-400 text-sm">{{ errors.title }}</p>
+                </div>
 
-                    <!-- Title -->
+                <!-- Type and Priority Grid -->
+                <div class="grid grid-cols-2 gap-4">
+                    <!-- Type -->
                     <div class="space-y-2">
-                        <label for="title" class="block text-sm font-medium text-slate-300">
-                            Title <span class="text-red-400">*</span>
+                        <label class="block text-sm font-medium text-slate-300">
+                            Type <span class="text-red-400">*</span>
                         </label>
-                        <input id="title" v-model="form.title" type="text" required placeholder="Enter task title..."
-                            class="w-full px-4 py-3 bg-slate-800/50 border border-slate-700/50 rounded-lg text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-green-400/20 focus:border-green-400/50 transition-all"
-                            :class="{ 'border-red-400/50 focus:ring-red-400/20': errors.title }" />
-                        <p v-if="errors.title" class="text-red-400 text-sm">{{ errors.title }}</p>
+                        <select v-model="form.type" required
+                            class="w-full px-3 py-2.5 bg-slate-800/50 border border-slate-700/50 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-green-400/20 focus:border-green-400/50"
+                            :class="{ 'border-red-400/50 focus:ring-red-400/20': errors.type }">
+                            <option value="">Select type...</option>
+                            <option value="study">Study</option>
+                            <option value="work">Work</option>
+                            <option value="question">Question</option>
+                            <option value="quick_note">Quick Note</option>
+                            <option value="reminder">Reminder</option>
+                            <option value="house">House</option>
+                            <option value="random">Random</option>
+                        </select>
+                        <p v-if="errors.type" class="text-red-400 text-sm">{{ errors.type }}</p>
                     </div>
 
-                    <!-- Description -->
+                    <!-- Priority -->
                     <div class="space-y-2">
-                        <label for="description" class="block text-sm font-medium text-slate-300">
-                            Description
+                        <label class="block text-sm font-medium text-slate-300">
+                            Priority <span class="text-red-400">*</span>
                         </label>
-                        <textarea id="description" v-model="form.description" rows="3"
-                            placeholder="Describe your task in detail..."
-                            class="w-full px-4 py-3 bg-slate-800/50 border border-slate-700/50 rounded-lg text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-green-400/20 focus:border-green-400/50 transition-all resize-none"
-                            :class="{ 'border-red-400/50 focus:ring-red-400/20': errors.description }" />
-                        <p v-if="errors.description" class="text-red-400 text-sm">{{ errors.description }}</p>
+                        <div class="grid grid-cols-4 gap-1">
+                            <button v-for="priority in priorities" :key="priority.value" type="button"
+                                @click="form.priority = priority.value" :class="[
+                                    'py-2 px-1 text-xs font-medium rounded transition-all',
+                                    form.priority === priority.value
+                                        ? priority.activeClass
+                                        : 'bg-slate-800/30 border border-slate-700/50 text-slate-400 hover:bg-slate-800/50'
+                                ]">
+                                {{ priority.label }}
+                            </button>
+                        </div>
+                        <p v-if="errors.priority" class="text-red-400 text-sm">{{ errors.priority }}</p>
                     </div>
                 </div>
 
-                <!-- Classification -->
-                <div class="space-y-6">
-                    <h3 class="text-lg font-semibold text-slate-200 border-b border-slate-800/30 pb-3">
-                        Classification
-                    </h3>
+                <!-- Status -->
+                <div class="space-y-2">
+                    <label class="block text-sm font-medium text-slate-300">
+                        Status
+                    </label>
+                    <div class="grid grid-cols-4 gap-2">
+                        <button v-for="status in statuses" :key="status.value" type="button"
+                            @click="form.status = status.value" :class="[
+                                'py-2 px-3 text-sm rounded-lg border transition-all flex items-center justify-center gap-1',
+                                form.status === status.value
+                                    ? status.activeClass
+                                    : 'border-slate-700 bg-slate-800/30 text-slate-400 hover:bg-slate-800/50'
+                            ]">
+                            <component :is="status.icon" class="w-3 h-3" />
+                            <span>{{ status.label }}</span>
+                        </button>
+                    </div>
+                </div>
 
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <!-- Type -->
+                <!-- Due Date and Time -->
+                <div class="space-y-4">
+                    <h3 class="text-sm font-semibold text-slate-300 uppercase tracking-wider">Due Date</h3>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <!-- Date -->
                         <div class="space-y-2">
-                            <label for="type" class="block text-sm font-medium text-slate-300">
-                                Type <span class="text-red-400">*</span>
+                            <label class="block text-sm font-medium text-slate-300">
+                                Date
                             </label>
-                            <select id="type" v-model="form.type" required
-                                class="w-full px-4 py-3 bg-slate-800/50 border border-slate-700/50 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-green-400/20 focus:border-green-400/50 transition-all"
-                                :class="{ 'border-red-400/50 focus:ring-red-400/20': errors.type }">
-                                <option value="">Select type...</option>
-                                <option value="study">Study</option>
-                                <option value="work">Work</option>
-                                <option value="question">Question</option>
-                                <option value="quick_note">Quick Note</option>
-                                <option value="reminder">Reminder</option>
-                                <option value="house">House</option>
-                                <option value="random">Random</option>
-                            </select>
-                            <p v-if="errors.type" class="text-red-400 text-sm">{{ errors.type }}</p>
+                            <input v-model="dueDate" type="date"
+                                class="w-full px-3 py-2.5 bg-slate-800/50 border border-slate-700/50 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-green-400/20 focus:border-green-400/50" />
                         </div>
 
-                        <!-- Priority -->
+                        <!-- Time -->
                         <div class="space-y-2">
-                            <label for="priority" class="block text-sm font-medium text-slate-300">
-                                Priority <span class="text-red-400">*</span>
+                            <label class="block text-sm font-medium text-slate-300">
+                                Time
                             </label>
-                            <select id="priority" v-model="form.priority" required
-                                class="w-full px-4 py-3 bg-slate-800/50 border border-slate-700/50 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-green-400/20 focus:border-green-400/50 transition-all"
-                                :class="{ 'border-red-400/50 focus:ring-red-400/20': errors.priority }">
-                                <option value="">Select priority...</option>
-                                <option value="low">Low</option>
-                                <option value="medium">Medium</option>
-                                <option value="high">High</option>
-                                <option value="urgent">Urgent</option>
-                            </select>
-                            <p v-if="errors.priority" class="text-red-400 text-sm">{{ errors.priority }}</p>
+                            <div class="flex gap-2">
+                                <select v-model="dueHour"
+                                    class="flex-1 px-2 py-2.5 bg-slate-800/50 border border-slate-700/50 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-green-400/20">
+                                    <option :value="null">--</option>
+                                    <option v-for="h in 24" :key="h - 1" :value="h - 1">
+                                        {{ String(h - 1).padStart(2, '0') }}
+                                    </option>
+                                </select>
+                                <span class="text-slate-400 py-2.5">:</span>
+                                <select v-model="dueMinute"
+                                    class="flex-1 px-2 py-2.5 bg-slate-800/50 border border-slate-700/50 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-green-400/20">
+                                    <option :value="null">--</option>
+                                    <option value="0">00</option>
+                                    <option value="15">15</option>
+                                    <option value="30">30</option>
+                                    <option value="45">45</option>
+                                </select>
+                            </div>
                         </div>
+                    </div>
 
-                        <!-- Status -->
-                        <div class="space-y-2">
-                            <label for="status" class="block text-sm font-medium text-slate-300">
-                                Status
-                            </label>
-                            <select id="status" v-model="form.status"
-                                class="w-full px-4 py-3 bg-slate-800/50 border border-slate-700/50 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-green-400/20 focus:border-green-400/50 transition-all">
-                                <option value="todo">Todo</option>
-                                <option value="in_progress">In Progress</option>
-                                <option value="blocked">Blocked</option>
-                                <option value="done">Done</option>
-                            </select>
+                    <!-- Quick date buttons -->
+                    <div class="flex gap-2">
+                        <button v-for="quick in quickDates" :key="quick.label" type="button"
+                            @click="setQuickDate(quick.value)"
+                            class="px-3 py-1.5 text-xs font-medium bg-slate-800/30 border border-slate-700/50 rounded-lg text-slate-400 hover:bg-slate-800/50 hover:text-slate-300 transition-all">
+                            {{ quick.label }}
+                        </button>
+                    </div>
+
+                    <!-- Visual due date display -->
+                    <div v-if="dueDate" class="p-3 bg-slate-800/30 rounded-lg">
+                        <div class="flex items-center gap-2 text-sm">
+                            <Calendar class="w-4 h-4 text-green-400" />
+                            <span class="text-slate-300">
+                                Due: {{ formatDueDateTime() }}
+                            </span>
+                            <button v-if="dueDate" type="button" @click="clearDueDate"
+                                class="ml-auto text-slate-500 hover:text-red-400 transition-colors">
+                                <X class="w-4 h-4" />
+                            </button>
                         </div>
                     </div>
                 </div>
 
-                <!-- Time & Schedule -->
-                <div class="space-y-6">
-                    <h3 class="text-lg font-semibold text-slate-200 border-b border-slate-800/30 pb-3">
-                        Time & Schedule
-                    </h3>
-
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <!-- Due Date -->
-                        <div class="space-y-2">
-                            <label for="due_date" class="block text-sm font-medium text-slate-300">
-                                Due Date
-                            </label>
-                            <input id="due_date" v-model="form.due_date" type="datetime-local"
-                                class="w-full px-4 py-3 bg-slate-800/50 border border-slate-700/50 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-green-400/20 focus:border-green-400/50 transition-all"
-                                :class="{ 'border-red-400/50 focus:ring-red-400/20': errors.due_date }" />
-                            <p v-if="errors.due_date" class="text-red-400 text-sm">{{ errors.due_date }}</p>
-                        </div>
-
-                        <!-- Estimated Time -->
-                        <div class="space-y-2">
-                            <label for="estimated_minutes" class="block text-sm font-medium text-slate-300">
-                                Estimated Time (minutes)
-                            </label>
-                            <input id="estimated_minutes" v-model="form.estimated_minutes" type="number" min="1"
-                                max="1440" placeholder="30"
-                                class="w-full px-4 py-3 bg-slate-800/50 border border-slate-700/50 rounded-lg text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-green-400/20 focus:border-green-400/50 transition-all"
-                                :class="{ 'border-red-400/50 focus:ring-red-400/20': errors.estimated_minutes }" />
-                            <p v-if="errors.estimated_minutes" class="text-red-400 text-sm">{{ errors.estimated_minutes
-                                }}</p>
+                <!-- Estimated Time -->
+                <div class="space-y-2">
+                    <label class="block text-sm font-medium text-slate-300">
+                        Estimated Time (minutes)
+                    </label>
+                    <div class="flex gap-2">
+                        <input v-model.number="form.estimated_minutes" type="number" min="5" step="5" placeholder="30"
+                            class="flex-1 px-3 py-2.5 bg-slate-800/50 border border-slate-700/50 rounded-lg text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-green-400/20" />
+                        <!-- Quick time buttons -->
+                        <div class="flex gap-1">
+                            <button v-for="time in [15, 30, 60, 120]" :key="time" type="button"
+                                @click="form.estimated_minutes = time" :class="[
+                                    'px-2 py-1 rounded text-xs font-medium transition-all',
+                                    form.estimated_minutes === time
+                                        ? 'bg-green-400/20 text-green-300 border border-green-400/50'
+                                        : 'bg-slate-800/30 text-slate-400 border border-slate-700/50 hover:bg-slate-800/50'
+                                ]">
+                                {{ time < 60 ? time + 'm' : (time / 60) + 'h' }} </button>
                         </div>
                     </div>
+                </div>
 
-                    <!-- Actual Time (only for editing) -->
-                    <div v-if="isEditing" class="space-y-2">
-                        <label for="actual_minutes" class="block text-sm font-medium text-slate-300">
-                            Actual Time (minutes)
-                        </label>
-                        <input id="actual_minutes" v-model="form.actual_minutes" type="number" min="1" placeholder="45"
-                            class="w-full px-4 py-3 bg-slate-800/50 border border-slate-700/50 rounded-lg text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-green-400/20 focus:border-green-400/50 transition-all"
-                            :class="{ 'border-red-400/50 focus:ring-red-400/20': errors.actual_minutes }" />
-                        <p v-if="errors.actual_minutes" class="text-red-400 text-sm">{{ errors.actual_minutes }}</p>
-                    </div>
+                <!-- Description -->
+                <div class="space-y-2">
+                    <label for="description" class="block text-sm font-medium text-slate-300">
+                        Description
+                    </label>
+                    <textarea id="description" v-model="form.description" rows="3"
+                        placeholder="Add any additional details..."
+                        class="w-full px-4 py-2.5 bg-slate-800/50 border border-slate-700/50 rounded-lg text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-green-400/20 focus:border-green-400/50 transition-all resize-none" />
                 </div>
 
                 <!-- Labels -->
-                <div class="space-y-6">
-                    <h3 class="text-lg font-semibold text-slate-200 border-b border-slate-800/30 pb-3">
+                <div class="space-y-2">
+                    <label class="block text-sm font-medium text-slate-300">
                         Labels
-                    </h3>
-
-                    <div class="space-y-4">
-                        <div class="flex items-center gap-3">
-                            <input v-model="newLabel" type="text" placeholder="Add a label..."
-                                class="flex-1 px-4 py-2 bg-slate-800/50 border border-slate-700/50 rounded-lg text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-green-400/20 focus:border-green-400/50 transition-all"
-                                @keypress.enter.prevent="addLabel" />
-                            <Button type="button" @click="addLabel" variant="outline" size="sm"
-                                class="border-slate-700 bg-slate-800/50 hover:bg-slate-800 shrink-0">
-                                <Plus class="w-4 h-4" />
-                            </Button>
-                        </div>
-
-                        <div v-if="form.labels.length > 0" class="flex flex-wrap gap-2">
-                            <Badge v-for="(label, index) in form.labels" :key="index" variant="secondary"
-                                class="bg-green-400/20 text-green-400 border-green-400/30 px-3 py-1">
-                                {{ label }}
-                                <button type="button" @click="removeLabel(index)"
-                                    class="ml-2 hover:text-red-400 transition-colors">
-                                    <X class="w-3 h-3" />
-                                </button>
-                            </Badge>
-                        </div>
+                    </label>
+                    <div class="flex gap-2">
+                        <input v-model="newLabel" type="text" placeholder="Add a label..."
+                            class="flex-1 px-3 py-2 bg-slate-800/50 border border-slate-700/50 rounded-lg text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-green-400/20"
+                            @keypress.enter.prevent="addLabel" />
+                        <Button type="button" @click="addLabel" variant="outline" size="sm"
+                            class="border-slate-700 bg-slate-800/50 hover:bg-slate-800">
+                            <Plus class="w-4 h-4" />
+                        </Button>
+                    </div>
+                    <div v-if="form.labels.length > 0" class="flex flex-wrap gap-2">
+                        <Badge v-for="(label, index) in form.labels" :key="index"
+                            class="bg-green-400/20 text-green-400 border-green-400/30 px-2 py-1">
+                            {{ label }}
+                            <button type="button" @click="removeLabel(index)"
+                                class="ml-2 hover:text-red-400 transition-colors">
+                                <X class="w-3 h-3" />
+                            </button>
+                        </Badge>
                     </div>
                 </div>
 
                 <!-- Form Actions -->
-                <DialogFooter class="gap-3 pt-6 border-t border-slate-800/30">
+                <DialogFooter class="gap-3 pt-4 border-t border-slate-800/30">
                     <Button type="button" variant="outline" @click="closeModal"
                         class="border-slate-700 bg-slate-800/50 hover:bg-slate-800">
                         Cancel
                     </Button>
 
-                    <Button type="submit" :disabled="props.processing"
+                    <Button type="submit" :disabled="processing"
                         class="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 min-w-24">
-                        <span v-if="props.processing" class="flex items-center gap-2">
+                        <span v-if="processing" class="flex items-center gap-2">
                             <div class="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin">
                             </div>
                             {{ isEditing ? 'Saving...' : 'Creating...' }}
                         </span>
                         <span v-else class="flex items-center gap-2">
                             <component :is="isEditing ? Save : Plus" class="w-4 h-4" />
-                            {{ isEditing ? 'Save Changes' : 'Create Task' }}
+                            {{ isEditing ? 'Save' : 'Create' }}
                         </span>
                     </Button>
                 </DialogFooter>
@@ -216,11 +245,16 @@ import {
 import {
     Button,
 } from '@/components/ui/button'
-import { Badge } from 'lucide-vue-next'
+import { Badge } from '@/components/ui/badge'
 import {
     Plus,
     X,
-    Save
+    Save,
+    Calendar,
+    Circle,
+    PlayCircle,
+    PauseCircle,
+    CheckCircle
 } from 'lucide-vue-next'
 
 const props = defineProps({
@@ -244,73 +278,159 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'submit'])
 
-const newLabel = ref('')
-
 const isEditing = computed(() => !!props.task)
 
-// Format due_date for datetime-local input
-const formatDateForInput = (date) => {
-    if (!date) return ''
-    const d = new Date(date)
-    return d.toISOString().slice(0, 16)
-}
+// Priority options
+const priorities = [
+    { value: 'low', label: 'Low', activeClass: 'bg-slate-600/20 text-slate-300 border border-slate-600/50' },
+    { value: 'medium', label: 'Med', activeClass: 'bg-yellow-400/20 text-yellow-300 border border-yellow-400/50' },
+    { value: 'high', label: 'High', activeClass: 'bg-orange-400/20 text-orange-300 border border-orange-400/50' },
+    { value: 'urgent', label: 'Urgent', activeClass: 'bg-red-400/20 text-red-300 border border-red-400/50' }
+]
 
-// Get tomorrow's date as default for new tasks
-const getTomorrowDefault = () => {
-    const tomorrow = new Date()
-    tomorrow.setDate(tomorrow.getDate() + 1)
-    tomorrow.setHours(9, 0, 0, 0) // 9:00 AM
-    return tomorrow.toISOString().slice(0, 16)
-}
+// Status options
+const statuses = [
+    { value: 'todo', label: 'Todo', icon: Circle, activeClass: 'bg-slate-600/20 text-slate-300 border-slate-600/50' },
+    { value: 'in_progress', label: 'In Progress', icon: PlayCircle, activeClass: 'bg-blue-400/20 text-blue-300 border-blue-400/50' },
+    { value: 'blocked', label: 'Blocked', icon: PauseCircle, activeClass: 'bg-orange-400/20 text-orange-300 border-orange-400/50' },
+    { value: 'done', label: 'Done', icon: CheckCircle, activeClass: 'bg-green-400/20 text-green-300 border-green-400/50' }
+]
 
+// Quick date options
+const quickDates = [
+    { label: 'Today', value: 0 },
+    { label: 'Tomorrow', value: 1 },
+    { label: 'In 3 days', value: 3 },
+    { label: 'Next week', value: 7 },
+    { label: 'No due date', value: null }
+]
+
+// Form state
 const form = useForm({
     title: '',
     description: '',
-    type: '',
+    type: 'random',
     status: 'todo',
-    priority: '',
-    due_date: '',
-    estimated_minutes: '',
-    actual_minutes: '',
+    priority: 'medium',
+    due_date: null,
+    estimated_minutes: null,
+    actual_minutes: null,
     labels: []
 })
 
-// Watch for task changes to populate form
+// Date/time state
+const dueDate = ref('')
+const dueHour = ref(null)
+const dueMinute = ref(null)
+const newLabel = ref('')
+
+// Watch for date/time changes and update form
+watch([dueDate, dueHour, dueMinute], () => {
+    if (dueDate.value && dueHour.value !== null && dueMinute.value !== null) {
+        const date = new Date(dueDate.value)
+        date.setHours(dueHour.value, dueMinute.value, 0, 0)
+        form.due_date = date.toISOString()
+    } else if (dueDate.value && (dueHour.value === null || dueMinute.value === null)) {
+        // If only date is set, set time to end of day (23:59)
+        const date = new Date(dueDate.value)
+        date.setHours(23, 59, 0, 0)
+        form.due_date = date.toISOString()
+    } else {
+        form.due_date = null
+    }
+})
+
+// Initialize form when task changes
 watch(() => props.task, (newTask) => {
     if (newTask) {
-        // Editing mode - populate with task data but keep defaults for empty fields
         form.title = newTask.title || ''
         form.description = newTask.description || ''
-        form.type = newTask.type || 'random' // Default to random
+        form.type = newTask.type || 'random'
         form.status = newTask.status || 'todo'
-        form.priority = newTask.priority || 'medium' // Default to medium
-        form.due_date = formatDateForInput(newTask.due_date) || getTomorrowDefault()
-        form.estimated_minutes = newTask.estimated_minutes || 30 // Default 30 minutes even in edit
-        form.actual_minutes = newTask.actual_minutes || ''
+        form.priority = newTask.priority || 'medium'
+        form.estimated_minutes = newTask.estimated_minutes || null
+        form.actual_minutes = newTask.actual_minutes || null
         form.labels = newTask.labels || []
+
+        if (newTask.due_date) {
+            const date = new Date(newTask.due_date)
+            dueDate.value = date.toISOString().split('T')[0]
+            dueHour.value = date.getHours()
+            dueMinute.value = Math.floor(date.getMinutes() / 15) * 15
+            form.due_date = newTask.due_date
+        } else {
+            clearDueDate()
+        }
     } else {
-        // Create mode - reset form with defaults
+        // New task - set smart defaults
         form.reset()
-        form.type = 'random' // Default type
+        form.type = 'random'
         form.status = 'todo'
-        form.priority = 'medium' // Default priority
-        form.due_date = getTomorrowDefault() // Default to tomorrow 9AM
-        form.estimated_minutes = 30 // Default 30 minutes
+        form.priority = 'medium'
         form.labels = []
+        form.estimated_minutes = 30
+
+        // Set default due date to tomorrow at 17:00
+        const tomorrow = new Date()
+        tomorrow.setDate(tomorrow.getDate() + 1)
+        tomorrow.setHours(17, 0, 0, 0)
+
+        dueDate.value = tomorrow.toISOString().split('T')[0]
+        dueHour.value = 17
+        dueMinute.value = 0
     }
 }, { immediate: true })
 
-// Reset form when modal closes
-watch(() => props.isOpen, (isOpen) => {
-    if (!isOpen) {
-        newLabel.value = ''
-        if (!props.task) {
-            form.reset()
-            form.status = 'todo'
-            form.labels = []
+// Methods
+const setQuickDate = (days) => {
+    if (days === null) {
+        clearDueDate()
+    } else {
+        const date = new Date()
+        date.setDate(date.getDate() + days)
+        dueDate.value = date.toISOString().split('T')[0]
+
+        // Set default time based on days
+        if (days === 0) {
+            // Today - set to end of workday
+            dueHour.value = 18
+            dueMinute.value = 0
+        } else {
+            // Future - set to mid-day
+            dueHour.value = 12
+            dueMinute.value = 0
         }
     }
-})
+}
+
+const clearDueDate = () => {
+    dueDate.value = ''
+    dueHour.value = null
+    dueMinute.value = null
+    form.due_date = null
+}
+
+const formatDueDateTime = () => {
+    if (!form.due_date) return ''
+
+    const date = new Date(form.due_date)
+    const dateStr = date.toLocaleDateString('en-US', {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric'
+    })
+
+    if (dueHour.value !== null && dueMinute.value !== null) {
+        const timeStr = date.toLocaleTimeString('en-US', {
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true
+        })
+        return `${dateStr} at ${timeStr}`
+    }
+
+    return dateStr
+}
 
 const addLabel = () => {
     if (newLabel.value.trim() && !form.labels.includes(newLabel.value.trim())) {
@@ -334,9 +454,8 @@ const closeModal = () => {
 }
 
 const submit = () => {
-    // Validação básica
     if (!form.title || !form.type || !form.priority) {
-        alert('Por favor, preencha todos os campos obrigatórios!')
+        alert('Please fill in all required fields!')
         return
     }
 

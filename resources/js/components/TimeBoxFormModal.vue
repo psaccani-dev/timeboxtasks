@@ -1,6 +1,6 @@
 <template>
     <Dialog :open="isOpen" @update:open="handleOpenChange">
-        <DialogContent class="w-[60vw] max-w-[700px] max-h-[90vh] overflow-y-auto bg-slate-900 border-slate-800">
+        <DialogContent class="w-[600px] max-w-[90vw] max-h-[90vh] overflow-y-auto bg-slate-900 border-slate-800">
             <DialogHeader>
                 <DialogTitle
                     class="text-2xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
@@ -12,76 +12,118 @@
             </DialogHeader>
 
             <form @submit.prevent="submit" class="space-y-6 py-4">
-                <!-- Basic Information -->
-                <div class="space-y-4">
-                    <h3 class="text-sm font-semibold text-slate-300 uppercase tracking-wider">Basic Info</h3>
-
-                    <!-- Title -->
-                    <div class="space-y-2">
-                        <label for="title" class="block text-sm font-medium text-slate-300">
-                            Title <span class="text-red-400">*</span>
-                        </label>
-                        <input id="title" v-model="form.title" type="text" required
-                            placeholder="e.g., Deep Work Session, Team Meeting..."
-                            class="w-full px-4 py-2.5 bg-slate-800/50 border border-slate-700/50 rounded-lg text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-400/20 focus:border-blue-400/50 transition-all"
-                            :class="{ 'border-red-400/50 focus:ring-red-400/20': errors.title }" />
-                        <p v-if="errors.title" class="text-red-400 text-sm">{{ errors.title }}</p>
-                    </div>
-
-                    <!-- Type -->
-                    <div class="space-y-2">
-                        <label class="block text-sm font-medium text-slate-300">
-                            Type <span class="text-red-400">*</span>
-                        </label>
-                        <div class="grid grid-cols-4 gap-2">
-                            <button v-for="type in timeBoxTypes" :key="type.value" type="button"
-                                @click="form.type = type.value" :class="[
-                                    'p-3 rounded-lg border transition-all text-center',
-                                    form.type === type.value
-                                        ? type.activeClass
-                                        : 'border-slate-700 bg-slate-800/30 hover:bg-slate-800/50 text-slate-300'
-                                ]">
-                                <component :is="type.icon" class="w-5 h-5 mx-auto mb-1" />
-                                <div class="text-xs font-medium">{{ type.label }}</div>
-                            </button>
-                        </div>
-                        <p v-if="errors.type" class="text-red-400 text-sm">{{ errors.type }}</p>
-                    </div>
+                <!-- Title -->
+                <div class="space-y-2">
+                    <label for="title" class="block text-sm font-medium text-slate-300">
+                        Title <span class="text-red-400">*</span>
+                    </label>
+                    <input id="title" v-model="form.title" type="text" required
+                        placeholder="e.g., Deep Work Session, Team Meeting..."
+                        class="w-full px-4 py-2.5 bg-slate-800/50 border border-slate-700/50 rounded-lg text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-400/20 focus:border-blue-400/50 transition-all"
+                        :class="{ 'border-red-400/50 focus:ring-red-400/20': errors.title }" @keydown.enter.prevent />
+                    <p v-if="errors.title" class="text-red-400 text-sm">{{ errors.title }}</p>
                 </div>
 
-                <!-- Time Settings -->
+                <!-- Type Selection -->
+                <div class="space-y-2">
+                    <label class="block text-sm font-medium text-slate-300">
+                        Type <span class="text-red-400">*</span>
+                    </label>
+                    <div class="grid grid-cols-4 gap-2">
+                        <button v-for="type in timeBoxTypes" :key="type.value" type="button"
+                            @click="form.type = type.value" :class="[
+                                'p-2.5 rounded-lg border transition-all text-center',
+                                form.type === type.value
+                                    ? type.activeClass
+                                    : 'border-slate-700 bg-slate-800/30 hover:bg-slate-800/50 text-slate-300'
+                            ]">
+                            <component :is="type.icon" class="w-4 h-4 mx-auto mb-1" />
+                            <div class="text-xs font-medium">{{ type.label }}</div>
+                        </button>
+                    </div>
+                    <p v-if="errors.type" class="text-red-400 text-sm">{{ errors.type }}</p>
+                </div>
+
+                <!-- Date and Time -->
                 <div class="space-y-4">
                     <h3 class="text-sm font-semibold text-slate-300 uppercase tracking-wider">Schedule</h3>
 
+                    <!-- Date Picker -->
+                    <div class="space-y-2">
+                        <label class="block text-sm font-medium text-slate-300">
+                            Date
+                        </label>
+                        <input v-model="selectedDate" type="date"
+                            class="w-full px-4 py-2.5 bg-slate-800/50 border border-slate-700/50 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-400/20 focus:border-blue-400/50 transition-all" />
+                    </div>
+
+                    <!-- Time Picker - Modern Style -->
                     <div class="grid grid-cols-2 gap-4">
-                        <!-- Start Time -->
                         <div class="space-y-2">
-                            <label for="start_at" class="block text-sm font-medium text-slate-300">
-                                Start Time <span class="text-red-400">*</span>
+                            <label class="block text-sm font-medium text-slate-300">
+                                Start Time
                             </label>
-                            <input id="start_at" v-model="form.start_at" type="datetime-local" required
-                                class="w-full px-4 py-2.5 bg-slate-800/50 border border-slate-700/50 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-400/20 focus:border-blue-400/50 transition-all"
-                                :class="{ 'border-red-400/50 focus:ring-red-400/20': errors.start_at }" />
-                            <p v-if="errors.start_at" class="text-red-400 text-sm">{{ errors.start_at }}</p>
+                            <div class="flex gap-2">
+                                <select v-model="startHour"
+                                    class="flex-1 px-3 py-2 bg-slate-800/50 border border-slate-700/50 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-400/20 focus:border-blue-400/50">
+                                    <option v-for="h in 24" :key="h - 1" :value="h - 1">
+                                        {{ String(h - 1).padStart(2, '0') }}
+                                    </option>
+                                </select>
+                                <span class="text-slate-400 py-2">:</span>
+                                <select v-model="startMinute"
+                                    class="flex-1 px-3 py-2 bg-slate-800/50 border border-slate-700/50 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-400/20 focus:border-blue-400/50">
+                                    <option value="0">00</option>
+                                    <option value="15">15</option>
+                                    <option value="30">30</option>
+                                    <option value="45">45</option>
+                                </select>
+                            </div>
                         </div>
 
-                        <!-- End Time -->
                         <div class="space-y-2">
-                            <label for="end_at" class="block text-sm font-medium text-slate-300">
-                                End Time <span class="text-red-400">*</span>
+                            <label class="block text-sm font-medium text-slate-300">
+                                Duration (minutes)
                             </label>
-                            <input id="end_at" v-model="form.end_at" type="datetime-local" required
-                                class="w-full px-4 py-2.5 bg-slate-800/50 border border-slate-700/50 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-400/20 focus:border-blue-400/50 transition-all"
-                                :class="{ 'border-red-400/50 focus:ring-red-400/20': errors.end_at }" />
-                            <p v-if="errors.end_at" class="text-red-400 text-sm">{{ errors.end_at }}</p>
+                            <div class="flex gap-2">
+                                <input v-model.number="durationMinutes" type="number" min="15" step="15"
+                                    class="flex-1 px-3 py-2 bg-slate-800/50 border border-slate-700/50 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-400/20 focus:border-blue-400/50" />
+                                <!-- Quick duration buttons -->
+                                <div class="flex gap-1">
+                                    <button v-for="dur in [30, 60, 90]" :key="dur" type="button"
+                                        @click="durationMinutes = dur" :class="[
+                                            'px-2 py-1 rounded text-xs font-medium transition-all',
+                                            durationMinutes === dur
+                                                ? 'bg-blue-400/20 text-blue-300 border border-blue-400/50'
+                                                : 'bg-slate-800/30 text-slate-400 border border-slate-700/50 hover:bg-slate-800/50'
+                                        ]">
+                                        {{ dur }}m
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    <!-- Duration Display -->
-                    <div v-if="duration" class="p-3 bg-slate-800/30 rounded-lg">
-                        <div class="flex items-center justify-between">
-                            <span class="text-sm text-slate-400">Duration</span>
-                            <span class="text-sm font-medium text-slate-200">{{ duration }}</span>
+                    <!-- Visual Time Display -->
+                    <div class="p-4 bg-slate-800/30 rounded-lg">
+                        <div class="flex items-center justify-between text-sm">
+                            <div class="flex items-center gap-2">
+                                <Clock class="w-4 h-4 text-blue-400" />
+                                <span class="text-slate-300 font-medium">
+                                    {{ formatDisplayTime(computedStartTime) }}
+                                </span>
+                            </div>
+                            <div class="flex items-center gap-2 text-slate-400">
+                                <ArrowRight class="w-4 h-4" />
+                                <span>{{ durationMinutes }} min</span>
+                                <ArrowRight class="w-4 h-4" />
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <Clock class="w-4 h-4 text-green-400" />
+                                <span class="text-slate-300 font-medium">
+                                    {{ formatDisplayTime(computedEndTime) }}
+                                </span>
+                            </div>
                         </div>
                     </div>
 
@@ -92,7 +134,7 @@
                                 Allow Overlap
                             </label>
                             <p class="text-xs text-slate-500">
-                                Enable if this time box can overlap with others
+                                Enable if this can overlap with other time boxes
                             </p>
                         </div>
                         <button type="button" @click="form.allow_overlap = !form.allow_overlap" :class="[
@@ -112,48 +154,23 @@
                     <label for="notes" class="block text-sm font-medium text-slate-300">
                         Notes
                     </label>
-                    <textarea id="notes" v-model="form.notes" rows="3"
-                        placeholder="Add any additional notes or context..."
+                    <textarea id="notes" v-model="form.notes" rows="2" placeholder="Any additional notes..."
                         class="w-full px-4 py-2.5 bg-slate-800/50 border border-slate-700/50 rounded-lg text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-400/20 focus:border-blue-400/50 transition-all resize-none" />
                 </div>
 
-                <!-- Task Assignment -->
-                <div class="space-y-4">
-                    <h3 class="text-sm font-semibold text-slate-300 uppercase tracking-wider">Assign Tasks</h3>
-
-                    <div class="space-y-2 max-h-48 overflow-y-auto">
-                        <div v-if="availableTasks.length === 0" class="text-center py-8 text-slate-500">
-                            No tasks available to assign
-                        </div>
-
+                <!-- Task Assignment (Simplified) -->
+                <div class="space-y-2" v-if="availableTasks.length > 0">
+                    <label class="block text-sm font-medium text-slate-300">
+                        Assign Tasks
+                    </label>
+                    <div class="max-h-32 overflow-y-auto space-y-1 p-2 bg-slate-800/30 rounded-lg">
                         <label v-for="task in availableTasks" :key="task.id"
-                            class="flex items-center gap-3 p-3 rounded-lg border border-slate-700/50 bg-slate-800/30 hover:bg-slate-800/50 cursor-pointer transition-all">
+                            class="flex items-center gap-2 p-2 rounded hover:bg-slate-800/50 cursor-pointer transition-all">
                             <input type="checkbox" :value="task.id" v-model="form.task_ids"
                                 class="w-4 h-4 rounded border-slate-600 bg-slate-800 text-blue-500 focus:ring-blue-400/20" />
-                            <div class="flex-1">
-                                <div class="flex items-center gap-2">
-                                    <span class="text-sm font-medium text-slate-200">{{ task.title }}</span>
-                                    <Badge :class="getPriorityClasses(task.priority)" class="text-xs">
-                                        {{ task.priority.toUpperCase() }}
-                                    </Badge>
-                                </div>
-                                <div class="text-xs text-slate-500 mt-0.5">
-                                    {{ task.estimated_minutes || '?' }} min estimated
-                                </div>
-                            </div>
+                            <span class="text-sm text-slate-200 flex-1">{{ task.title }}</span>
+                            <span class="text-xs text-slate-500">{{ task.estimated_minutes }}m</span>
                         </label>
-                    </div>
-
-                    <div v-if="form.task_ids.length > 0"
-                        class="p-3 bg-blue-400/10 border border-blue-400/30 rounded-lg">
-                        <div class="flex items-center justify-between">
-                            <span class="text-sm text-blue-300">
-                                {{ form.task_ids.length }} task(s) selected
-                            </span>
-                            <span class="text-sm text-blue-300">
-                                Total: {{ totalTaskMinutes }} min
-                            </span>
-                        </div>
                     </div>
                 </div>
 
@@ -173,7 +190,7 @@
                         </span>
                         <span v-else class="flex items-center gap-2">
                             <component :is="isEditing ? Save : Plus" class="w-4 h-4" />
-                            {{ isEditing ? 'Save Changes' : 'Create Time Box' }}
+                            {{ isEditing ? 'Save' : 'Create' }}
                         </span>
                     </Button>
                 </DialogFooter>
@@ -203,7 +220,13 @@ import {
     Target,
     Coffee,
     Users,
-    User
+    User,
+    BookOpen,
+    Briefcase,
+    Home,
+    Shuffle,
+    Clock,
+    ArrowRight
 } from 'lucide-vue-next'
 
 const props = defineProps({
@@ -235,17 +258,20 @@ const isEditing = computed(() => !!props.timeBox)
 
 const timeBoxTypes = [
     { value: 'focus', label: 'Focus', icon: Target, activeClass: 'bg-blue-400/20 border-blue-400/50 text-blue-300' },
-    { value: 'break', label: 'Break', icon: Coffee, activeClass: 'bg-green-400/20 border-green-400/50 text-green-300' },
     { value: 'meeting', label: 'Meeting', icon: Users, activeClass: 'bg-purple-400/20 border-purple-400/50 text-purple-300' },
-    { value: 'personal', label: 'Personal', icon: User, activeClass: 'bg-orange-400/20 border-orange-400/50 text-orange-300' },
+    { value: 'break', label: 'Break', icon: Coffee, activeClass: 'bg-green-400/20 border-green-400/50 text-green-300' },
+    { value: 'study', label: 'Study', icon: BookOpen, activeClass: 'bg-indigo-400/20 border-indigo-400/50 text-indigo-300' },
+    { value: 'work', label: 'Work', icon: Briefcase, activeClass: 'bg-orange-400/20 border-orange-400/50 text-orange-300' },
+    { value: 'house', label: 'House', icon: Home, activeClass: 'bg-yellow-400/20 border-yellow-400/50 text-yellow-300' },
+    { value: 'random', label: 'Random', icon: Shuffle, activeClass: 'bg-pink-400/20 border-pink-400/50 text-pink-300' },
+    { value: 'custom', label: 'Custom', icon: User, activeClass: 'bg-slate-400/20 border-slate-400/50 text-slate-300' },
 ]
 
-// Helper function to get next hour rounded time
-const getNextHourTime = () => {
-    const now = new Date()
-    now.setHours(now.getHours() + 1, 0, 0, 0)
-    return now.toISOString().slice(0, 16)
-}
+// Time management state
+const selectedDate = ref('')
+const startHour = ref(0)
+const startMinute = ref(0)
+const durationMinutes = ref(60)
 
 const form = useForm({
     title: '',
@@ -257,81 +283,84 @@ const form = useForm({
     task_ids: []
 })
 
-// Calculate duration
-const duration = computed(() => {
-    if (!form.start_at || !form.end_at) return ''
-
-    const start = new Date(form.start_at)
-    const end = new Date(form.end_at)
-    const minutes = Math.floor((end - start) / 60000)
-
-    if (minutes < 0) return 'Invalid time range'
-    if (minutes === 0) return '0 minutes'
-
-    const hours = Math.floor(minutes / 60)
-    const mins = minutes % 60
-
-    if (hours === 0) return `${mins} minute${mins !== 1 ? 's' : ''}`
-    if (mins === 0) return `${hours} hour${hours !== 1 ? 's' : ''}`
-    return `${hours} hour${hours !== 1 ? 's' : ''} ${mins} minute${mins !== 1 ? 's' : ''}`
+// Computed times
+const computedStartTime = computed(() => {
+    const date = new Date(selectedDate.value || new Date())
+    date.setHours(startHour.value, startMinute.value, 0, 0)
+    return date
 })
 
-// Calculate total task minutes
-const totalTaskMinutes = computed(() => {
-    return props.availableTasks
-        .filter(t => form.task_ids.includes(t.id))
-        .reduce((sum, t) => sum + (t.estimated_minutes || 0), 0)
+const computedEndTime = computed(() => {
+    const end = new Date(computedStartTime.value)
+    end.setMinutes(end.getMinutes() + durationMinutes.value)
+    return end
 })
 
-// Watch for timeBox changes to populate form
+// Update form when computed times change
+watch([computedStartTime, computedEndTime], () => {
+    form.start_at = computedStartTime.value.toISOString()
+    form.end_at = computedEndTime.value.toISOString()
+})
+
+// Format time for display
+const formatDisplayTime = (date) => {
+    return date.toLocaleTimeString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+    })
+}
+
+// Initialize form based on props
 watch(() => props.timeBox, (newTimeBox) => {
     if (newTimeBox) {
+        // Editing existing time box
+        const startDate = new Date(newTimeBox.start_at)
+        const endDate = new Date(newTimeBox.end_at)
+
         form.title = newTimeBox.title || ''
         form.type = newTimeBox.type || 'focus'
-        form.start_at = newTimeBox.start_at ? new Date(newTimeBox.start_at).toISOString().slice(0, 16) : ''
-        form.end_at = newTimeBox.end_at ? new Date(newTimeBox.end_at).toISOString().slice(0, 16) : ''
         form.allow_overlap = newTimeBox.allow_overlap || false
         form.notes = newTimeBox.notes || ''
         form.task_ids = newTimeBox.tasks?.map(t => t.id) || []
+
+        selectedDate.value = startDate.toISOString().split('T')[0]
+        startHour.value = startDate.getHours()
+        startMinute.value = Math.floor(startDate.getMinutes() / 15) * 15
+        durationMinutes.value = Math.round((endDate - startDate) / 60000)
     } else {
-        // New time box - set defaults
+        // New time box - set smart defaults
+        const now = new Date()
+        const nextHour = new Date()
+
+        // Round to next 15 minute mark
+        const minutes = now.getMinutes()
+        const roundedMinutes = Math.ceil(minutes / 15) * 15
+
+        if (roundedMinutes === 60) {
+            nextHour.setHours(now.getHours() + 1, 0, 0, 0)
+        } else {
+            nextHour.setHours(now.getHours(), roundedMinutes, 0, 0)
+        }
+
         form.reset()
         form.type = 'focus'
         form.allow_overlap = false
         form.task_ids = []
 
-        // Set default times (next hour for 1 hour duration)
-        const startTime = getNextHourTime()
-        form.start_at = startTime
-        const endDate = new Date(startTime)
-        endDate.setHours(endDate.getHours() + 1)
-        form.end_at = endDate.toISOString().slice(0, 16)
+        selectedDate.value = nextHour.toISOString().split('T')[0]
+        startHour.value = nextHour.getHours()
+        startMinute.value = nextHour.getMinutes()
+        durationMinutes.value = 60
     }
 }, { immediate: true })
 
-// Auto-adjust end time when start time changes
-watch(() => form.start_at, (newStart) => {
-    if (newStart && !props.timeBox) {
-        const start = new Date(newStart)
-        const end = new Date(form.end_at)
-
-        // If end is before start, set end to 1 hour after start
-        if (end <= start) {
-            start.setHours(start.getHours() + 1)
-            form.end_at = start.toISOString().slice(0, 16)
-        }
+// Reset form when modal closes
+watch(() => props.isOpen, (isOpen) => {
+    if (!isOpen && !props.timeBox) {
+        form.reset()
     }
 })
-
-const getPriorityClasses = (priority) => {
-    const classes = {
-        low: 'bg-slate-800 text-slate-300 border-slate-700',
-        medium: 'bg-orange-400/20 text-orange-400 border-orange-400/30',
-        high: 'bg-red-400/20 text-red-400 border-red-400/30',
-        urgent: 'bg-red-500/20 text-red-300 border-red-500/30'
-    }
-    return classes[priority] || 'bg-slate-800 text-slate-300'
-}
 
 const handleOpenChange = (open) => {
     if (!open) {
@@ -344,7 +373,7 @@ const closeModal = () => {
 }
 
 const submit = () => {
-    if (!form.title || !form.type || !form.start_at || !form.end_at) {
+    if (!form.title || !form.type) {
         alert('Please fill in all required fields!')
         return
     }
