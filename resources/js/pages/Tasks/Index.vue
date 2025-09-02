@@ -1,6 +1,5 @@
-<!-- resources/js/pages/tasks/Index.vue -->
 <template>
-    <Layout title="Tasks">
+    <Layout title="Tasks" @open-task-modal="openCreateModal">
         <div class="p-6 space-y-6">
             <!-- Page Header -->
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -34,7 +33,6 @@
                         </DropdownMenuContent>
                     </DropdownMenu>
 
-                    <!-- BOTÃO CORRIGIDO - SEM LINK, COM @CLICK -->
                     <Button @click="openCreateModal"
                         class="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600">
                         <Plus class="w-4 h-4 mr-2" />
@@ -162,7 +160,6 @@
                                                 <Square class="w-3 h-3" />
                                                 {{ task.time_boxes.length }} time box(es)
                                             </span>
-                                            <!-- COUNTDOWN ADICIONADO -->
                                             <TaskCountdown v-if="task.due_date && task.status !== 'done'"
                                                 :due-date="task.due_date" />
                                         </div>
@@ -178,7 +175,6 @@
                                         </Button>
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end" class="w-48 bg-slate-900 border-slate-700">
-                                        <!-- EDIT CORRIGIDO - CHAMA MODAL EM VEZ DE NAVEGAR -->
                                         <DropdownMenuItem @click.stop="openEditModal(task)">
                                             <Edit class="mr-2 h-4 w-4" />
                                             Edit
@@ -380,10 +376,6 @@ const handleTaskSubmit = ({ data, isEditing, taskId }) => {
 }
 
 // Navigation functions
-// const navigateToTask = (taskId) => {
-//     router.visit(route('tasks.show', taskId))
-// }
-
 const navigateToPage = (page) => {
     router.visit(route('tasks.index', { page }))
 }
