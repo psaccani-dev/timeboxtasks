@@ -13,6 +13,7 @@ use Inertia\Inertia;
 class TaskController extends Controller
 {
     use AuthorizesRequests;
+
     public function index(Request $request)
     {
         $this->authorize('viewAny', Task::class);
@@ -22,20 +23,16 @@ class TaskController extends Controller
 
         $query = $user->tasks()->with('timeBoxes');
 
-        // Apply filters
         $filters = $request->only(['status', 'priority', 'due_filter', 'search']);
 
-        // Status filter
         if ($request->filled('status')) {
             $query->where('status', $request->status);
         }
 
-        // Priority filter
         if ($request->filled('priority')) {
             $query->where('priority', $request->priority);
         }
 
-        // Due date filter
         if ($request->filled('due_filter')) {
             $now = now();
             switch ($request->due_filter) {
@@ -61,7 +58,6 @@ class TaskController extends Controller
             }
         }
 
-        // Search filter
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
@@ -70,7 +66,6 @@ class TaskController extends Controller
             });
         }
 
-        // Apply sorting
         $sortBy = $request->get('sort', 'created_at');
         $sortOrder = $request->get('order', 'desc');
 
@@ -126,9 +121,8 @@ class TaskController extends Controller
 
         /** @var User $user */
         $user = Auth::user();
-        $task = $user->tasks()->create(
-            $request->validated()
-        );
+
+        $task = $user->tasks()->create($request->validated());
 
         return redirect()
             ->route('tasks.index')
@@ -151,7 +145,7 @@ class TaskController extends Controller
         $task->update($request->validated());
 
         return redirect()
-            ->route('tasks.index', $task)
+            ->route('tasks.index')
             ->with('message', 'Task updated successfully!');
     }
 
@@ -166,7 +160,6 @@ class TaskController extends Controller
             ->with('message', 'Task deleted successfully!');
     }
 
-    // Método adicional para update rápido de status
     public function updateStatus(UpdateTaskRequest $request, Task $task)
     {
         $this->authorize('update', $task);
@@ -178,7 +171,6 @@ class TaskController extends Controller
         return back()->with('message', 'Task status updated!');
     }
 
-    // Método para ver time boxes de uma task
     public function timeBoxes(Task $task)
     {
         $this->authorize('view', $task);

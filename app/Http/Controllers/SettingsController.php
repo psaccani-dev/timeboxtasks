@@ -1,10 +1,9 @@
 <?php
+// app/Http/Controllers/SettingsController.php
 
 namespace App\Http\Controllers;
 
 use App\Models\User;
-use App\Models\Task;
-use App\Models\TimeBox;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -17,7 +16,6 @@ class SettingsController extends Controller
     {
         $user = Auth::user();
 
-        // Get user settings from database or use defaults
         $settings = [
             'theme' => $user->theme ?? 'dark',
             'language' => $user->language ?? 'en',
@@ -46,7 +44,6 @@ class SettingsController extends Controller
 
         $userId = Auth::id();
 
-        // Update using DB Facade
         DB::table('users')
             ->where('id', $userId)
             ->update([
@@ -71,7 +68,6 @@ class SettingsController extends Controller
         $userId = Auth::id();
         $updateData = [];
 
-        // Build update array only with provided fields
         if ($request->has('theme')) {
             $updateData['theme'] = $request->theme;
         }
@@ -116,7 +112,6 @@ class SettingsController extends Controller
         session(['locale' => $request->language]);
         app()->setLocale($request->language);
 
-        // Retornar resposta Inertia ao invés de JSON
         return redirect()->back()->with('success', 'Language updated successfully');
     }
 
@@ -150,43 +145,35 @@ class SettingsController extends Controller
         $userId = Auth::id();
         $user = User::find($userId);
 
-        // Collect user basic data
         $userData = [
             'user' => [
                 'name' => $user->name,
                 'email' => $user->email,
                 'bio' => $user->bio ?? '',
                 'created_at' => $user->created_at
-            ]
+            ],
+            'tasks' => $user->tasks->map(function ($task) {
+                return [
+                    'title' => $task->title,
+                    'description' => $task->description,
+                    'status' => $task->status,
+                    'priority' => $task->priority,
+                    'due_date' => $task->due_date,
+                    'created_at' => $task->created_at,
+                    'completed_at' => $task->completed_at
+                ];
+            }),
+            'timeBoxes' => $user->timeBoxes->map(function ($timeBox) {
+                return [
+                    'title' => $timeBox->title,
+                    'type' => $timeBox->type,
+                    'start_at' => $timeBox->start_at,
+                    'end_at' => $timeBox->end_at,
+                    'created_at' => $timeBox->created_at
+                ];
+            }),
+            'exported_at' => now()->toISOString()
         ];
-
-        // Get tasks using Eloquent relationship
-        $tasks = $user->tasks()->get()->map(function ($task) {
-            return [
-                'title' => $task->title ?? '',
-                'description' => $task->description ?? '',
-                'status' => $task->status ?? 'pending',
-                'priority' => $task->priority ?? 'medium',
-                'due_date' => $task->due_date ?? null,
-                'created_at' => $task->created_at,
-                'completed_at' => $task->completed_at ?? null
-            ];
-        });
-        $userData['tasks'] = $tasks;
-
-        // Get time boxes using Eloquent relationship
-        $timeBoxes = $user->timeBoxes()->get()->map(function ($timeBox) {
-            return [
-                'title' => $timeBox->title ?? '',
-                'start_time' => $timeBox->start_time ?? null,
-                'end_time' => $timeBox->end_time ?? null,
-                'duration' => $timeBox->duration ?? 0,
-                'created_at' => $timeBox->created_at
-            ];
-        });
-        $userData['timeBoxes'] = $timeBoxes;
-
-        $userData['exported_at'] = now()->toISOString();
 
         $json = json_encode($userData, JSON_PRETTY_PRINT);
         $filename = 'taskflow-export-' . now()->format('Y-m-d') . '.json';
@@ -198,7 +185,6 @@ class SettingsController extends Controller
 
     public function deleteAccount(Request $request)
     {
-        // Optional: Add confirmation validation
         if ($request->has('confirmation')) {
             $request->validate([
                 'confirmation' => 'required|in:DELETE'
@@ -207,21 +193,18 @@ class SettingsController extends Controller
 
         $userId = Auth::id();
 
-        // Delete related data using DB Facades
+        DB::table('task_time_box')->whereIn('task_id', function ($query) use ($userId) {
+            $query->select('id')->from('tasks')->where('user_id', $userId);
+        })->delete();
+
         DB::table('tasks')->where('user_id', $userId)->delete();
         DB::table('time_boxes')->where('user_id', $userId)->delete();
 
-        // You can add more tables here as needed
-        // For example: comments, notifications, etc.
-
-        // Logout user
         Auth::logout();
 
-        // Invalidate session
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        // Delete user account
         DB::table('users')->where('id', $userId)->delete();
 
         return redirect('/')->with('message', 'Account deleted successfully');

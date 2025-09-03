@@ -457,8 +457,6 @@ class User extends Authenticatable
         return $this->hasMany(TimeBox::class);
     }
 }
-
-
 CONTROLLERS : 
 
 <?php
@@ -476,6 +474,7 @@ use Inertia\Inertia;
 class TaskController extends Controller
 {
     use AuthorizesRequests;
+    
     public function index(Request $request)
     {
         $this->authorize('viewAny', Task::class);
@@ -485,20 +484,16 @@ class TaskController extends Controller
 
         $query = $user->tasks()->with('timeBoxes');
 
-        // Apply filters
         $filters = $request->only(['status', 'priority', 'due_filter', 'search']);
 
-        // Status filter
         if ($request->filled('status')) {
             $query->where('status', $request->status);
         }
 
-        // Priority filter
         if ($request->filled('priority')) {
             $query->where('priority', $request->priority);
         }
 
-        // Due date filter
         if ($request->filled('due_filter')) {
             $now = now();
             switch ($request->due_filter) {
@@ -524,7 +519,6 @@ class TaskController extends Controller
             }
         }
 
-        // Search filter
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
@@ -533,7 +527,6 @@ class TaskController extends Controller
             });
         }
 
-        // Apply sorting
         $sortBy = $request->get('sort', 'created_at');
         $sortOrder = $request->get('order', 'desc');
 
@@ -589,9 +582,8 @@ class TaskController extends Controller
 
         /** @var User $user */
         $user = Auth::user();
-        $task = $user->tasks()->create(
-            $request->validated()
-        );
+        
+        $task = $user->tasks()->create($request->validated());
 
         return redirect()
             ->route('tasks.index')
@@ -614,7 +606,7 @@ class TaskController extends Controller
         $task->update($request->validated());
 
         return redirect()
-            ->route('tasks.index', $task)
+            ->route('tasks.index')
             ->with('message', 'Task updated successfully!');
     }
 
@@ -629,7 +621,6 @@ class TaskController extends Controller
             ->with('message', 'Task deleted successfully!');
     }
 
-    // Método adicional para update rápido de status
     public function updateStatus(UpdateTaskRequest $request, Task $task)
     {
         $this->authorize('update', $task);
@@ -641,7 +632,6 @@ class TaskController extends Controller
         return back()->with('message', 'Task status updated!');
     }
 
-    // Método para ver time boxes de uma task
     public function timeBoxes(Task $task)
     {
         $this->authorize('view', $task);
@@ -657,14 +647,11 @@ class TaskController extends Controller
     }
 }
 
-
-
-<?php
 // app/Http/Controllers/TimeBoxController.php
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\{StoreTimeBoxRequest, UpdateTimeBoxRequest};
+use App\Http\Requests\{StoreTimeBoxRequest, UpdateTimeBoxRequest, UpdateTimeBoxTimeRequest};
 use App\Models\{TimeBox, Task, User};
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
@@ -683,7 +670,6 @@ class TimeBoxController extends Controller
 
         $query = $user->timeBoxes()->with('tasks');
 
-        // Apply filters
         if ($request->filled('date')) {
             $date = Carbon::parse($request->date);
             $query->whereDate('start_at', $date);
@@ -692,7 +678,6 @@ class TimeBoxController extends Controller
             $weekEnd = $weekStart->copy()->endOfWeek();
             $query->whereBetween('start_at', [$weekStart, $weekEnd]);
         } else {
-            // Default: show current week
             $query->whereBetween('start_at', [
                 Carbon::now()->startOfWeek(),
                 Carbon::now()->endOfWeek()
@@ -722,7 +707,6 @@ class TimeBoxController extends Controller
                 ];
             });
 
-        // Get user's tasks for assignment
         $availableTasks = $user->tasks()
             ->where('status', '!=', 'done')
             ->orderBy('priority', 'desc')
@@ -746,13 +730,8 @@ class TimeBoxController extends Controller
         $user = Auth::user();
 
         $data = $request->validated();
-
-
-
-        // Add user_id explicitly
         $data['user_id'] = $user->id;
 
-        // Check for overlaps if not allowed
         if (!($data['allow_overlap'] ?? false)) {
             $overlapping = $user->timeBoxes()
                 ->between($data['start_at'], $data['end_at'])
@@ -765,16 +744,13 @@ class TimeBoxController extends Controller
             }
         }
 
-        // Extract task_ids before creating
         $taskIds = $data['task_ids'] ?? [];
         unset($data['task_ids']);
 
         $timeBox = TimeBox::create($data);
 
-        // Attach tasks if provided
         if (!empty($taskIds)) {
-            // Verify tasks belong to user
-            $validTaskIds = $user->tasks()->whereIn('id', $taskIds)->pluck('id')->toArray();
+            $validTaskIds = $user->tasks()->whereIn('id', $taskIds)->pluck('id');
             $timeBox->tasks()->sync($validTaskIds);
         }
 
@@ -789,7 +765,6 @@ class TimeBoxController extends Controller
 
         $data = $request->validated();
 
-        // Check for overlaps if changing time and not allowing overlap
         if (isset($data['start_at']) || isset($data['end_at'])) {
             $start = $data['start_at'] ?? $timeBox->start_at;
             $end = $data['end_at'] ?? $timeBox->end_at;
@@ -811,7 +786,6 @@ class TimeBoxController extends Controller
 
         $timeBox->update($data);
 
-        // Update tasks if provided
         if (isset($data['task_ids'])) {
             $timeBox->tasks()->sync($data['task_ids']);
         }
@@ -828,15 +802,11 @@ class TimeBoxController extends Controller
         return back()->with('message', 'Time box deleted successfully!');
     }
 
-    /**
-     * Calendar view - monthly display
-     */
     public function calendar(Request $request)
     {
         /** @var User $user */
         $user = Auth::user();
 
-        // Get date range for the month
         $startDate = $request->has('start_date')
             ? Carbon::parse($request->start_date)->startOfDay()
             : Carbon::now()->startOfMonth();
@@ -845,7 +815,6 @@ class TimeBoxController extends Controller
             ? Carbon::parse($request->end_date)->endOfDay()
             : Carbon::now()->endOfMonth();
 
-        // Get time boxes for the month - convert to array
         $timeBoxes = $user->timeBoxes()
             ->with('tasks')
             ->whereBetween('start_at', [$startDate, $endDate])
@@ -860,29 +829,23 @@ class TimeBoxController extends Controller
                     'end_at' => $timeBox->end_at->toISOString(),
                     'allow_overlap' => $timeBox->allow_overlap,
                     'notes' => $timeBox->notes,
-                    'tasks' => $timeBox->tasks->toArray(), // Convert tasks to array too
+                    'tasks' => $timeBox->tasks,
                     'duration_minutes' => $timeBox->start_at->diffInMinutes($timeBox->end_at),
                     'is_active' => $timeBox->start_at <= now() && $timeBox->end_at >= now(),
                     'is_past' => $timeBox->end_at < now(),
                 ];
-            })
-            ->values(); // Reset array keys
+            });
 
-
-        // Get tasks with due dates in the month - convert to array
         $tasks = $user->tasks()
             ->whereBetween('due_date', [$startDate, $endDate])
             ->orderBy('due_date')
             ->get(['id', 'title', 'priority', 'status', 'due_date', 'estimated_minutes']);
-        // Convert to array
 
-        // Get all tasks for selection - convert to array
         $availableTasks = $user->tasks()
             ->where('status', '!=', 'done')
             ->orderBy('priority', 'desc')
             ->orderBy('due_date', 'asc')
             ->get(['id', 'title', 'priority', 'estimated_minutes', 'status']);
-
 
         return Inertia::render('Calendar/Index', [
             'timeBoxes' => $timeBoxes,
@@ -894,16 +857,11 @@ class TimeBoxController extends Controller
             ]
         ]);
     }
-    public function updateTime(Request $request, TimeBox $timeBox)
+    
+    public function updateTime(UpdateTimeBoxTimeRequest $request, TimeBox $timeBox)
     {
         $this->authorize('update', $timeBox);
 
-        $request->validate([
-            'start_at' => 'required|date',
-            'end_at' => 'required|date|after:start_at',
-        ]);
-
-        // Check overlaps
         if (!$timeBox->allow_overlap) {
             $overlapping = $timeBox->user->timeBoxes()
                 ->where('id', '!=', $timeBox->id)
@@ -912,7 +870,7 @@ class TimeBoxController extends Controller
 
             if ($overlapping) {
                 return back()->withErrors([
-                    'message' => 'Time slot overlaps with another time box'
+                    'start_at' => 'Time slot overlaps with another time box'
                 ]);
             }
         }
@@ -922,20 +880,261 @@ class TimeBoxController extends Controller
             'end_at' => $request->end_at,
         ]);
 
-        // Simply redirect back and let the index method handle the filtering
         return redirect()->back();
     }
 }
-
-
-
 <?php
+// app/Http/Controllers/DashboardController.php
+
+namespace App\Http\Controllers;
+
+use App\Models\Task;
+use App\Models\TimeBox;
+use App\Models\User;
+use App\Services\ProductivityService;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\Auth;
+use Inertia\Inertia;
+
+class DashboardController extends Controller
+{
+    protected ProductivityService $productivityService;
+
+    public function __construct(ProductivityService $productivityService)
+    {
+        $this->productivityService = $productivityService;
+    }
+
+    public function index()
+    {
+        /** @var User $user */
+        $user = Auth::user();
+
+        if (!$user) {
+            return redirect()->route('login');
+        }
+
+        $now = Carbon::now();
+        $startOfWeek = $now->copy()->startOfWeek();
+        $endOfWeek = $now->copy()->endOfWeek();
+
+        $todayTasks = Task::where('user_id', $user->id)
+            ->whereDate('due_date', $now->toDateString())
+            ->get();
+
+        $todayCompleted = $todayTasks->where('status', 'done')->count();
+        $todayTotal = $todayTasks->count();
+        $todayProgress = $todayTotal > 0 ? round(($todayCompleted / $todayTotal) * 100) : 0;
+
+        $activeTimeBox = TimeBox::where('user_id', $user->id)
+            ->where('start_at', '<=', $now)
+            ->where('end_at', '>=', $now)
+            ->with('tasks')
+            ->first();
+
+        if ($activeTimeBox) {
+            $duration = $activeTimeBox->start_at->diffInMinutes($activeTimeBox->end_at);
+            $elapsed = $activeTimeBox->start_at->diffInMinutes($now);
+            $progress = round(($elapsed / $duration) * 100);
+            $remaining = $activeTimeBox->end_at->diffForHumans($now, true);
+
+            $activeTimeBox = [
+                'id' => $activeTimeBox->id,
+                'title' => $activeTimeBox->title,
+                'progress' => $progress,
+                'remaining' => $remaining
+            ];
+        }
+
+        $weekTasks = Task::where('user_id', $user->id)
+            ->whereBetween('updated_at', [$startOfWeek, $endOfWeek])
+            ->get();
+
+        $weekTimeBoxes = TimeBox::where('user_id', $user->id)
+            ->whereBetween('start_at', [$startOfWeek, $endOfWeek])
+            ->get();
+
+        $focusHours = $weekTimeBoxes
+            ->where('type', 'focus')
+            ->sum(function ($tb) {
+                return $tb->start_at->diffInMinutes($tb->end_at);
+            }) / 60;
+
+        $todaySchedule = TimeBox::where('user_id', $user->id)
+            ->whereDate('start_at', $now->toDateString())
+            ->orderBy('start_at')
+            ->get()
+            ->map(function ($tb) use ($now) {
+                $isNow = $tb->start_at <= $now && $tb->end_at >= $now;
+                return [
+                    'id' => $tb->id,
+                    'title' => $tb->title,
+                    'type' => $tb->type,
+                    'time' => $tb->start_at->format('H:i'),
+                    'duration' => $tb->start_at->diffInMinutes($tb->end_at),
+                    'isNow' => $isNow
+                ];
+            });
+
+        $upcomingTasks = Task::where('user_id', $user->id)
+            ->where('status', '!=', 'done')
+            ->where(function ($q) use ($now) {
+                $q->whereNull('due_date')
+                    ->orWhere('due_date', '>=', $now);
+            })
+            ->orderBy('priority', 'desc')
+            ->orderBy('due_date', 'asc')
+            ->limit(5)
+            ->get(['id', 'title', 'priority', 'status', 'due_date']);
+
+        $activityData = $this->getActivityData($user->id, $now);
+
+        $completionRate = $todayTotal > 0 ? round(($todayCompleted / $todayTotal) * 100) : 0;
+        $weekStreak = $this->productivityService->calculateStreak($user->id);
+        $productivityScore = $this->productivityService->calculateScore(
+            $completionRate,
+            $focusHours,
+            $weekStreak
+        );
+
+        return Inertia::render('Dashboard/Index', [
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email
+            ],
+            'stats' => [
+                'todayCompleted' => $todayCompleted,
+                'todayTotal' => $todayTotal,
+                'todayProgress' => $todayProgress,
+                'weekStreak' => $weekStreak,
+                'productivityScore' => $productivityScore,
+                'productivityTrend' => $this->productivityService->calculateTrend($user->id)
+            ],
+            'activeTimeBox' => $activeTimeBox,
+            'todaySchedule' => $todaySchedule,
+            'upcomingTasks' => $upcomingTasks,
+            'weekStats' => [
+                'tasksCompleted' => $weekTasks->where('status', 'done')->count(),
+                'focusHours' => round($focusHours, 1),
+                'timeBoxes' => $weekTimeBoxes->count(),
+                'avgProductivity' => $this->productivityService->calculateWeeklyAverage($user->id)
+            ],
+            'activityData' => $activityData
+        ]);
+    }
+
+    private function getActivityData(int $userId, Carbon $now): array
+    {
+        $activityData = [];
+        
+        for ($i = 6; $i >= 0; $i--) {
+            $date = $now->copy()->subDays($i);
+            
+            $dayTasks = Task::where('user_id', $userId)
+                ->whereDate('updated_at', $date)
+                ->count();
+                
+            $dayCompleted = Task::where('user_id', $userId)
+                ->whereDate('updated_at', $date)
+                ->where('status', 'done')
+                ->count();
+
+            $dayTimeBoxes = TimeBox::where('user_id', $userId)
+                ->whereDate('start_at', $date)
+                ->get();
+
+            $dayHours = $dayTimeBoxes->sum(function ($tb) {
+                return $tb->start_at->diffInMinutes($tb->end_at);
+            }) / 60;
+
+            $activityData[] = [
+                'date' => $date->toDateString(),
+                'label' => $date->format('D'),
+                'total' => $dayTasks,
+                'completed' => $dayCompleted,
+                'hours' => round($dayHours, 1),
+                'percentage' => min(100, $dayHours * 10)
+            ];
+        }
+        
+        return $activityData;
+    }
+}
+
+// app/Http/Controllers/AnalyticsController.php
+
+namespace App\Http\Controllers;
+
+use App\Models\{Task, TimeBox};
+use App\Services\AnalyticsService;
+use Carbon\Carbon;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Inertia\Inertia;
+
+class AnalyticsController extends Controller
+{
+    protected AnalyticsService $analyticsService;
+
+    public function __construct(AnalyticsService $analyticsService)
+    {
+        $this->analyticsService = $analyticsService;
+    }
+
+    public function index(Request $request)
+    {
+        $user = Auth::user();
+        $period = $request->get('period', '30d');
+
+        $endDate = Carbon::now();
+        $startDate = match ($period) {
+            '7d' => $endDate->copy()->subDays(7),
+            '30d' => $endDate->copy()->subDays(30),
+            '90d' => $endDate->copy()->subDays(90),
+            '1y' => $endDate->copy()->subYear(),
+            default => $endDate->copy()->subDays(30)
+        };
+
+        $periodDays = $startDate->diffInDays($endDate);
+        $prevStartDate = $startDate->copy()->subDays($periodDays);
+        $prevEndDate = $startDate->copy();
+
+        $metrics = $this->analyticsService->calculateMetrics(
+            $user->id, 
+            $startDate, 
+            $endDate, 
+            $prevStartDate, 
+            $prevEndDate
+        );
+
+        $chartData = $this->analyticsService->getChartData(
+            $user->id,
+            $startDate,
+            $endDate,
+            $period
+        );
+
+        $insights = $this->analyticsService->generateInsights(
+            $user->id,
+            $metrics['tasksCompleted']['value'],
+            $metrics['focusHours']['value'],
+            $metrics['completionRate']['value']
+        );
+
+        return Inertia::render('Analytics/Index', [
+            'metrics' => $metrics,
+            'chartData' => $chartData,
+            'insights' => $insights
+        ]);
+    }
+}
+
+// app/Http/Controllers/SettingsController.php
 
 namespace App\Http\Controllers;
 
 use App\Models\User;
-use App\Models\Task;
-use App\Models\TimeBox;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -948,7 +1147,6 @@ class SettingsController extends Controller
     {
         $user = Auth::user();
 
-        // Get user settings from database or use defaults
         $settings = [
             'theme' => $user->theme ?? 'dark',
             'language' => $user->language ?? 'en',
@@ -977,7 +1175,6 @@ class SettingsController extends Controller
 
         $userId = Auth::id();
 
-        // Update using DB Facade
         DB::table('users')
             ->where('id', $userId)
             ->update([
@@ -1002,7 +1199,6 @@ class SettingsController extends Controller
         $userId = Auth::id();
         $updateData = [];
 
-        // Build update array only with provided fields
         if ($request->has('theme')) {
             $updateData['theme'] = $request->theme;
         }
@@ -1047,7 +1243,6 @@ class SettingsController extends Controller
         session(['locale' => $request->language]);
         app()->setLocale($request->language);
 
-        // Retornar resposta Inertia ao invés de JSON
         return redirect()->back()->with('success', 'Language updated successfully');
     }
 
@@ -1081,43 +1276,35 @@ class SettingsController extends Controller
         $userId = Auth::id();
         $user = User::find($userId);
 
-        // Collect user basic data
         $userData = [
             'user' => [
                 'name' => $user->name,
                 'email' => $user->email,
                 'bio' => $user->bio ?? '',
                 'created_at' => $user->created_at
-            ]
+            ],
+            'tasks' => $user->tasks->map(function ($task) {
+                return [
+                    'title' => $task->title,
+                    'description' => $task->description,
+                    'status' => $task->status,
+                    'priority' => $task->priority,
+                    'due_date' => $task->due_date,
+                    'created_at' => $task->created_at,
+                    'completed_at' => $task->completed_at
+                ];
+            }),
+            'timeBoxes' => $user->timeBoxes->map(function ($timeBox) {
+                return [
+                    'title' => $timeBox->title,
+                    'type' => $timeBox->type,
+                    'start_at' => $timeBox->start_at,
+                    'end_at' => $timeBox->end_at,
+                    'created_at' => $timeBox->created_at
+                ];
+            }),
+            'exported_at' => now()->toISOString()
         ];
-
-        // Get tasks using Eloquent relationship
-        $tasks = $user->tasks()->get()->map(function ($task) {
-            return [
-                'title' => $task->title ?? '',
-                'description' => $task->description ?? '',
-                'status' => $task->status ?? 'pending',
-                'priority' => $task->priority ?? 'medium',
-                'due_date' => $task->due_date ?? null,
-                'created_at' => $task->created_at,
-                'completed_at' => $task->completed_at ?? null
-            ];
-        });
-        $userData['tasks'] = $tasks;
-
-        // Get time boxes using Eloquent relationship
-        $timeBoxes = $user->timeBoxes()->get()->map(function ($timeBox) {
-            return [
-                'title' => $timeBox->title ?? '',
-                'start_time' => $timeBox->start_time ?? null,
-                'end_time' => $timeBox->end_time ?? null,
-                'duration' => $timeBox->duration ?? 0,
-                'created_at' => $timeBox->created_at
-            ];
-        });
-        $userData['timeBoxes'] = $timeBoxes;
-
-        $userData['exported_at'] = now()->toISOString();
 
         $json = json_encode($userData, JSON_PRETTY_PRINT);
         $filename = 'taskflow-export-' . now()->format('Y-m-d') . '.json';
@@ -1129,7 +1316,6 @@ class SettingsController extends Controller
 
     public function deleteAccount(Request $request)
     {
-        // Optional: Add confirmation validation
         if ($request->has('confirmation')) {
             $request->validate([
                 'confirmation' => 'required|in:DELETE'
@@ -1138,265 +1324,335 @@ class SettingsController extends Controller
 
         $userId = Auth::id();
 
-        // Delete related data using DB Facades
+        DB::table('task_time_box')->whereIn('task_id', function($query) use ($userId) {
+            $query->select('id')->from('tasks')->where('user_id', $userId);
+        })->delete();
+        
         DB::table('tasks')->where('user_id', $userId)->delete();
         DB::table('time_boxes')->where('user_id', $userId)->delete();
 
-        // You can add more tables here as needed
-        // For example: comments, notifications, etc.
-
-        // Logout user
         Auth::logout();
 
-        // Invalidate session
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        // Delete user account
         DB::table('users')->where('id', $userId)->delete();
 
         return redirect('/')->with('message', 'Account deleted successfully');
     }
 }
 
+Services : 
+
 <?php
+// app/Services/ProductivityService.php
 
-
-// app/Http/Controllers/DashboardController.php
-
-namespace App\Http\Controllers;
+namespace App\Services;
 
 use App\Models\Task;
-use App\Models\TimeBox;
-use App\Models\User;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\Auth;
-use Inertia\Inertia;
 
-class DashboardController extends Controller
+class ProductivityService
 {
-    public function index()
+    /**
+     * Calculate productivity score based on multiple factors
+     */
+    public function calculateScore(float $completionRate, float $focusHours, int $streak): int
     {
-        /** @var User $user */
-        $user = Auth::user();
+        // Fórmula ponderada:
+        // 40% baseado em taxa de conclusão
+        // 30% baseado em horas de foco (normalizado para 100)
+        // 30% baseado em consistência/streak (normalizado para 100)
 
-        if (!$user) {
-            return redirect()->route('login');
+        return min(100, round(
+            ($completionRate * 0.4) +
+                (min($focusHours / 4, 100) * 0.3) +  // 4 horas = 100%
+                (min($streak * 5, 100) * 0.3)        // 20 dias = 100%
+        ));
+    }
+
+    /**
+     * Calculate current streak of consecutive days with completed tasks
+     */
+    public function calculateStreak(int $userId): int
+    {
+        $streak = 0;
+        $date = Carbon::now()->startOfDay();
+
+        // Verifica até 365 dias para trás
+        for ($i = 0; $i < 365; $i++) {
+            $hasCompletedTask = Task::where('user_id', $userId)
+                ->where('status', 'done')
+                ->whereDate('updated_at', $date)
+                ->exists();
+
+            if (!$hasCompletedTask) {
+                // Se não é o primeiro dia (hoje), o streak acabou
+                if ($i > 0) {
+                    break;
+                }
+                // Se é hoje e não tem task completada, streak é 0
+                return 0;
+            }
+
+            $streak++;
+            $date->subDay();
         }
 
+        return $streak;
+    }
+
+    /**
+     * Calculate productivity trend comparing to previous period
+     */
+    public function calculateTrend(int $userId): int
+    {
         $now = Carbon::now();
-        $startOfWeek = $now->copy()->startOfWeek();
-        $endOfWeek = $now->copy()->endOfWeek();
+        $weekAgo = $now->copy()->subWeek();
+        $twoWeeksAgo = $now->copy()->subWeeks(2);
 
-        // Today's stats - usando query builder direttamente
-        $todayTasks = Task::where('user_id', $user->id)
-            ->whereDate('due_date', $now->toDateString())
-            ->get();
+        // Tasks completadas na última semana
+        $currentWeekTasks = Task::where('user_id', $userId)
+            ->where('status', 'done')
+            ->whereBetween('updated_at', [$weekAgo, $now])
+            ->count();
 
-        $todayCompleted = $todayTasks->where('status', 'done')->count();
-        $todayTotal = $todayTasks->count();
-        $todayProgress = $todayTotal > 0 ? round(($todayCompleted / $todayTotal) * 100) : 0;
+        // Tasks completadas na semana anterior
+        $previousWeekTasks = Task::where('user_id', $userId)
+            ->where('status', 'done')
+            ->whereBetween('updated_at', [$twoWeeksAgo, $weekAgo])
+            ->count();
 
-        // Active time box
-        $activeTimeBox = TimeBox::where('user_id', $user->id)
-            ->where('start_at', '<=', $now)
-            ->where('end_at', '>=', $now)
-            ->with('tasks')
+        if ($previousWeekTasks === 0) {
+            // Se não tinha tasks antes, qualquer task é 100% de melhora
+            return $currentWeekTasks > 0 ? 100 : 0;
+        }
+
+        // Calcula percentual de mudança
+        return round((($currentWeekTasks - $previousWeekTasks) / $previousWeekTasks) * 100);
+    }
+
+    /**
+     * Calculate weekly average productivity
+     */
+    public function calculateWeeklyAverage(int $userId): int
+    {
+        $startOfWeek = Carbon::now()->startOfWeek();
+        $endOfWeek = Carbon::now()->endOfWeek();
+
+        // Total de tasks criadas na semana
+        $totalTasks = Task::where('user_id', $userId)
+            ->whereBetween('created_at', [$startOfWeek, $endOfWeek])
+            ->count();
+
+        // Tasks completadas na semana
+        $completedTasks = Task::where('user_id', $userId)
+            ->where('status', 'done')
+            ->whereBetween('updated_at', [$startOfWeek, $endOfWeek])
+            ->count();
+
+        if ($totalTasks === 0) {
+            return 0;
+        }
+
+        return round(($completedTasks / $totalTasks) * 100);
+    }
+
+    /**
+     * Get productivity insights based on user data
+     */
+    public function getProductivityInsights(int $userId): array
+    {
+        $insights = [];
+        $now = Carbon::now();
+
+        // Verifica padrão de horários mais produtivos
+        $mostProductiveHour = Task::where('user_id', $userId)
+            ->where('status', 'done')
+            ->whereDate('updated_at', '>=', $now->copy()->subDays(30))
+            ->selectRaw('EXTRACT(HOUR FROM updated_at) as hour, COUNT(*) as count')
+            ->groupBy('hour')
+            ->orderBy('count', 'desc')
             ->first();
 
-        if ($activeTimeBox) {
-            $duration = $activeTimeBox->start_at->diffInMinutes($activeTimeBox->end_at);
-            $elapsed = $activeTimeBox->start_at->diffInMinutes($now);
-            $progress = round(($elapsed / $duration) * 100);
-            $remaining = $activeTimeBox->end_at->diffForHumans($now, true);
-
-            $activeTimeBox = [
-                'id' => $activeTimeBox->id,
-                'title' => $activeTimeBox->title,
-                'progress' => $progress,
-                'remaining' => $remaining
+        if ($mostProductiveHour) {
+            $hour = $mostProductiveHour->hour;
+            $insights[] = [
+                'type' => 'info',
+                'message' => sprintf('You are most productive at %d:00', $hour)
             ];
         }
 
-        // Week stats
-        $weekTasks = Task::where('user_id', $user->id)
-            ->whereBetween('updated_at', [$startOfWeek, $endOfWeek])
-            ->get();
-
-        $weekTimeBoxes = TimeBox::where('user_id', $user->id)
-            ->whereBetween('start_at', [$startOfWeek, $endOfWeek])
-            ->get();
-
-        $focusHours = $weekTimeBoxes
-            ->where('type', 'focus')
-            ->sum(function ($tb) {
-                return $tb->start_at->diffInMinutes($tb->end_at);
-            }) / 60;
-
-        // Today's schedule
-        $todaySchedule = TimeBox::where('user_id', $user->id)
-            ->whereDate('start_at', $now->toDateString())
-            ->orderBy('start_at')
-            ->get()
-            ->map(function ($tb) use ($now) {
-                $isNow = $tb->start_at <= $now && $tb->end_at >= $now;
-                return [
-                    'id' => $tb->id,
-                    'title' => $tb->title,
-                    'type' => $tb->type,
-                    'time' => $tb->start_at->format('H:i'),
-                    'duration' => $tb->start_at->diffInMinutes($tb->end_at),
-                    'isNow' => $isNow
-                ];
-            });
-
-        // Upcoming tasks
-        $upcomingTasks = Task::where('user_id', $user->id)
+        // Verifica se há muitas tasks em atraso
+        $overdueTasks = Task::where('user_id', $userId)
             ->where('status', '!=', 'done')
-            ->where(function ($q) use ($now) {
-                $q->whereNull('due_date')
-                    ->orWhere('due_date', '>=', $now);
-            })
-            ->orderBy('priority', 'desc')
-            ->orderBy('due_date', 'asc')
-            ->limit(5)
-            ->get(['id', 'title', 'priority', 'status', 'due_date']);
+            ->where('due_date', '<', $now)
+            ->count();
 
-        // Activity data for chart
-        $activityData = [];
-        for ($i = 6; $i >= 0; $i--) {
-            $date = $now->copy()->subDays($i);
-            $dayTasks = Task::where('user_id', $user->id)
-                ->whereDate('updated_at', $date)
-                ->count();
-            $dayCompleted = Task::where('user_id', $user->id)
-                ->whereDate('updated_at', $date)
-                ->where('status', 'done')
-                ->count();
-
-            $dayTimeBoxes = TimeBox::where('user_id', $user->id)
-                ->whereDate('start_at', $date)
-                ->get();
-
-            $dayHours = $dayTimeBoxes->sum(function ($tb) {
-                return $tb->start_at->diffInMinutes($tb->end_at);
-            }) / 60;
-
-            $activityData[] = [
-                'date' => $date->toDateString(),
-                'label' => $date->format('D'),
-                'total' => $dayTasks,
-                'completed' => $dayCompleted,
-                'hours' => round($dayHours, 1),
-                'percentage' => min(100, $dayHours * 10) // Scale for display
+        if ($overdueTasks > 5) {
+            $insights[] = [
+                'type' => 'warning',
+                'message' => sprintf('You have %d overdue tasks. Consider reviewing priorities.', $overdueTasks)
             ];
         }
 
-        return Inertia::render('Dashboard/Index', [
-            'user' => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email
-            ],
-            'stats' => [
-                'todayCompleted' => $todayCompleted,
-                'todayTotal' => $todayTotal,
-                'todayProgress' => $todayProgress,
-                'weekStreak' => 3, // Calculate actual streak
-                'productivityScore' => 78,
-                'productivityTrend' => 12
-            ],
-            'activeTimeBox' => $activeTimeBox,
-            'todaySchedule' => $todaySchedule,
-            'upcomingTasks' => $upcomingTasks,
-            'weekStats' => [
-                'tasksCompleted' => $weekTasks->where('status', 'done')->count(),
-                'focusHours' => round($focusHours, 1),
-                'timeBoxes' => $weekTimeBoxes->count(),
-                'avgProductivity' => 82
-            ],
-            'activityData' => $activityData
-        ]);
+        // Verifica streak
+        $streak = $this->calculateStreak($userId);
+        if ($streak > 7) {
+            $insights[] = [
+                'type' => 'success',
+                'message' => sprintf('Great job! %d day streak!', $streak)
+            ];
+        }
+
+        return $insights;
+    }
+
+    /**
+     * Calculate estimated time to complete all pending tasks
+     */
+    public function estimateTimeToComplete(int $userId): array
+    {
+        $pendingTasks = Task::where('user_id', $userId)
+            ->where('status', '!=', 'done')
+            ->whereNotNull('estimated_minutes')
+            ->sum('estimated_minutes');
+
+        $hours = floor($pendingTasks / 60);
+        $minutes = $pendingTasks % 60;
+
+        return [
+            'total_minutes' => $pendingTasks,
+            'hours' => $hours,
+            'minutes' => $minutes,
+            'formatted' => sprintf('%dh %dm', $hours, $minutes)
+        ];
+    }
+
+    /**
+     * Get completion rate for different task priorities
+     */
+    public function getCompletionRateByPriority(int $userId, Carbon $startDate = null, Carbon $endDate = null): array
+    {
+        $startDate = $startDate ?? Carbon::now()->startOfMonth();
+        $endDate = $endDate ?? Carbon::now()->endOfMonth();
+
+        $priorities = ['urgent', 'high', 'medium', 'low'];
+        $rates = [];
+
+        foreach ($priorities as $priority) {
+            $total = Task::where('user_id', $userId)
+                ->where('priority', $priority)
+                ->whereBetween('created_at', [$startDate, $endDate])
+                ->count();
+
+            $completed = Task::where('user_id', $userId)
+                ->where('priority', $priority)
+                ->where('status', 'done')
+                ->whereBetween('updated_at', [$startDate, $endDate])
+                ->count();
+
+            $rates[$priority] = [
+                'total' => $total,
+                'completed' => $completed,
+                'rate' => $total > 0 ? round(($completed / $total) * 100) : 0
+            ];
+        }
+
+        return $rates;
+    }
+
+    /**
+     * Calculate average time from creation to completion
+     */
+    public function getAverageCompletionTime(int $userId): array
+    {
+        $completedTasks = Task::where('user_id', $userId)
+            ->where('status', 'done')
+            ->whereNotNull('completed_at')
+            ->whereDate('completed_at', '>=', Carbon::now()->subDays(30))
+            ->get();
+
+        if ($completedTasks->isEmpty()) {
+            return [
+                'days' => 0,
+                'hours' => 0,
+                'formatted' => 'No data'
+            ];
+        }
+
+        $totalMinutes = 0;
+        $count = 0;
+
+        foreach ($completedTasks as $task) {
+            $minutes = $task->created_at->diffInMinutes($task->completed_at);
+            $totalMinutes += $minutes;
+            $count++;
+        }
+
+        $averageMinutes = $totalMinutes / $count;
+        $days = floor($averageMinutes / 1440); // 1440 minutes in a day
+        $hours = floor(($averageMinutes % 1440) / 60);
+
+        return [
+            'days' => $days,
+            'hours' => $hours,
+            'total_minutes' => $averageMinutes,
+            'formatted' => $days > 0 ? sprintf('%d days, %d hours', $days, $hours) : sprintf('%d hours', $hours)
+        ];
     }
 }
 
 
 
 <?php
+// app/Services/AnalyticsService.php
 
-// app/Http/Controllers/AnalyticsController.php - VERSIONE COMPLETA CON DATI REALI
-
-namespace App\Http\Controllers;
+namespace App\Services;
 
 use App\Models\{Task, TimeBox};
+use App\Enums\{TaskType, TaskPriority, TaskStatus};
 use Carbon\Carbon;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Inertia\Inertia;
 
-class AnalyticsController extends Controller
+class AnalyticsService
 {
-    public function index(Request $request)
+    protected ProductivityService $productivityService;
+
+    public function __construct(ProductivityService $productivityService)
     {
-        $user = Auth::user();
-        $period = $request->get('period', '30d');
-
-        // Calculate date range
-        $endDate = Carbon::now();
-        $startDate = match ($period) {
-            '7d' => $endDate->copy()->subDays(7),
-            '30d' => $endDate->copy()->subDays(30),
-            '90d' => $endDate->copy()->subDays(90),
-            '1y' => $endDate->copy()->subYear(),
-            default => $endDate->copy()->subDays(30)
-        };
-
-        // Previous period for comparison
-        $periodDays = $startDate->diffInDays($endDate);
-        $prevStartDate = $startDate->copy()->subDays($periodDays);
-        $prevEndDate = $startDate->copy();
-
-        // REAL METRICS
-        $metrics = $this->calculateMetrics($user->id, $startDate, $endDate, $prevStartDate, $prevEndDate);
-
-        // REAL CHART DATA
-        $chartData = [
-            'taskTrend' => $this->getTaskTrend($user->id, $startDate, $endDate, $period),
-            'labels' => $this->getChartLabels($period, $startDate, $endDate),
-            'timeDistribution' => $this->getTimeDistribution($user->id, $startDate, $endDate),
-            'priorityDistribution' => $this->getPriorityDistribution($user->id, $startDate, $endDate),
-            'productiveHours' => $this->getProductiveHours($user->id, $startDate, $endDate),
-            'taskTypes' => $this->getTaskTypes($user->id, $startDate, $endDate)
-        ];
-
-        // REAL INSIGHTS
-        $insights = $this->generateInsights(
-            $user->id,
-            $metrics['tasksCompleted']['value'],
-            $metrics['focusHours']['value'],
-            $metrics['completionRate']['value']
-        );
-
-        return Inertia::render('Analytics/Index', [
-            'metrics' => $metrics,
-            'chartData' => $chartData,
-            'insights' => $insights
-        ]);
+        $this->productivityService = $productivityService;
     }
 
-    private function calculateMetrics($userId, $startDate, $endDate, $prevStartDate, $prevEndDate)
+    /**
+     * Calculate all metrics for the analytics dashboard
+     */
+    public function calculateMetrics($userId, $startDate, $endDate, $prevStartDate, $prevEndDate): array
     {
-        // Current period
-        $tasksCompleted = Task::where('user_id', $userId)
-            ->where('status', 'done')
-            ->whereBetween('updated_at', [$startDate, $endDate])
-            ->count();
-
-        $totalTasks = Task::where('user_id', $userId)
+        // Use single query for current period task stats
+        $currentStats = Task::where('user_id', $userId)
             ->whereBetween('created_at', [$startDate, $endDate])
-            ->count();
+            ->selectRaw('
+                COUNT(*) as total,
+                SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as completed
+            ', ['done'])
+            ->first();
 
+        $tasksCompleted = $currentStats->completed ?? 0;
+        $totalTasks = $currentStats->total ?? 0;
+
+        // Previous period stats
+        $prevStats = Task::where('user_id', $userId)
+            ->whereBetween('created_at', [$prevStartDate, $prevEndDate])
+            ->selectRaw('
+                COUNT(*) as total,
+                SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as completed
+            ', ['done'])
+            ->first();
+
+        $prevTasksCompleted = $prevStats->completed ?? 0;
+
+        // Focus hours calculation
         $timeBoxes = TimeBox::where('user_id', $userId)
             ->whereBetween('start_at', [$startDate, $endDate])
             ->get();
@@ -1406,12 +1662,6 @@ class AnalyticsController extends Controller
             ->sum(function ($tb) {
                 return $tb->start_at->diffInMinutes($tb->end_at) / 60;
             });
-
-        // Previous period
-        $prevTasksCompleted = Task::where('user_id', $userId)
-            ->where('status', 'done')
-            ->whereBetween('updated_at', [$prevStartDate, $prevEndDate])
-            ->count();
 
         $prevFocusHours = TimeBox::where('user_id', $userId)
             ->where('type', 'focus')
@@ -1434,13 +1684,12 @@ class AnalyticsController extends Controller
             ? round(($tasksCompleted / $totalTasks) * 100)
             : 0;
 
-        $streak = $this->calculateStreak($userId);
-
-        $productivityScore = min(100, round(
-            ($completionRate * 0.4) +
-                (min($focusHours / 4, 100) * 0.3) +
-                (min($streak * 5, 100) * 0.3)
-        ));
+        $streak = $this->productivityService->calculateStreak($userId);
+        $productivityScore = $this->productivityService->calculateScore(
+            $completionRate, 
+            $focusHours, 
+            $streak
+        );
 
         return [
             'tasksCompleted' => [
@@ -1466,7 +1715,25 @@ class AnalyticsController extends Controller
         ];
     }
 
-    private function getTaskTrend($userId, $startDate, $endDate, $period)
+    /**
+     * Get all chart data for analytics dashboard
+     */
+    public function getChartData($userId, $startDate, $endDate, $period): array
+    {
+        return [
+            'taskTrend' => $this->getTaskTrend($userId, $startDate, $endDate, $period),
+            'labels' => $this->getChartLabels($period, $startDate, $endDate),
+            'timeDistribution' => $this->getTimeDistribution($userId, $startDate, $endDate),
+            'priorityDistribution' => $this->getPriorityDistribution($userId, $startDate, $endDate),
+            'productiveHours' => $this->getProductiveHours($userId, $startDate, $endDate),
+            'taskTypes' => $this->getTaskTypes($userId, $startDate, $endDate)
+        ];
+    }
+
+    /**
+     * Get task completion trend over time
+     */
+    public function getTaskTrend($userId, $startDate, $endDate, $period): array
     {
         $data = [];
         $days = $period === '7d' ? 7 : ($period === '30d' ? 30 : 90);
@@ -1487,7 +1754,10 @@ class AnalyticsController extends Controller
         return $data;
     }
 
-    private function getChartLabels($period, $startDate, $endDate)
+    /**
+     * Get chart labels based on period
+     */
+    public function getChartLabels($period, $startDate, $endDate): array
     {
         if ($period === '7d') {
             $labels = [];
@@ -1501,7 +1771,10 @@ class AnalyticsController extends Controller
         return ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
     }
 
-    private function getTimeDistribution($userId, $startDate, $endDate)
+    /**
+     * Get time distribution by type
+     */
+    public function getTimeDistribution($userId, $startDate, $endDate): array
     {
         $timeBoxes = TimeBox::where('user_id', $userId)
             ->whereBetween('start_at', [$startDate, $endDate])
@@ -1511,24 +1784,39 @@ class AnalyticsController extends Controller
             'focus' => 0,
             'meeting' => 0,
             'break' => 0,
+            'study' => 0,
+            'work' => 0,
             'other' => 0
         ];
 
         foreach ($timeBoxes as $tb) {
             $hours = $tb->start_at->diffInMinutes($tb->end_at) / 60;
-            $type = in_array($tb->type, ['focus', 'meeting', 'break']) ? $tb->type : 'other';
-            $distribution[$type] += $hours;
+            $typeValue = $tb->type instanceof \App\Enums\TimeBoxType 
+                ? $tb->type->value 
+                : $tb->type;
+            
+            $category = match($typeValue) {
+                'focus', 'meeting', 'break', 'study', 'work' => $typeValue,
+                default => 'other'
+            };
+            
+            $distribution[$category] += $hours;
         }
 
         return [
             ['type' => 'focus', 'label' => 'Focus', 'hours' => round($distribution['focus'], 1), 'color' => 'rgb(96, 165, 250)'],
             ['type' => 'meeting', 'label' => 'Meetings', 'hours' => round($distribution['meeting'], 1), 'color' => 'rgb(168, 85, 247)'],
             ['type' => 'break', 'label' => 'Breaks', 'hours' => round($distribution['break'], 1), 'color' => 'rgb(52, 211, 153)'],
+            ['type' => 'study', 'label' => 'Study', 'hours' => round($distribution['study'], 1), 'color' => 'rgb(59, 130, 246)'],
+            ['type' => 'work', 'label' => 'Work', 'hours' => round($distribution['work'], 1), 'color' => 'rgb(239, 68, 68)'],
             ['type' => 'other', 'label' => 'Other', 'hours' => round($distribution['other'], 1), 'color' => 'rgb(251, 146, 60)']
         ];
     }
 
-    private function getPriorityDistribution($userId, $startDate, $endDate)
+    /**
+     * Get priority distribution
+     */
+    public function getPriorityDistribution($userId, $startDate, $endDate): array
     {
         $tasks = Task::where('user_id', $userId)
             ->whereBetween('created_at', [$startDate, $endDate])
@@ -1540,11 +1828,21 @@ class AnalyticsController extends Controller
         }
 
         $priorities = [
-            'urgent' => $tasks->where('priority', 'urgent')->count(),
-            'high' => $tasks->where('priority', 'high')->count(),
-            'medium' => $tasks->where('priority', 'medium')->count(),
-            'low' => $tasks->where('priority', 'low')->count()
+            'urgent' => 0,
+            'high' => 0,
+            'medium' => 0,
+            'low' => 0
         ];
+
+        foreach ($tasks as $task) {
+            $priorityValue = $task->priority instanceof \App\Enums\TaskPriority 
+                ? $task->priority->value 
+                : $task->priority;
+            
+            if (isset($priorities[$priorityValue])) {
+                $priorities[$priorityValue]++;
+            }
+        }
 
         return [
             ['name' => 'Urgent', 'count' => $priorities['urgent'], 'percentage' => round(($priorities['urgent'] / $total) * 100), 'colorClass' => 'bg-red-400'],
@@ -1554,9 +1852,12 @@ class AnalyticsController extends Controller
         ];
     }
 
-    private function getProductiveHours($userId, $startDate, $endDate)
+    /**
+     * Get most productive hours
+     */
+    public function getProductiveHours($userId, $startDate, $endDate): array
     {
-        // Versione PostgreSQL
+        // PostgreSQL version
         $hourlyTasks = Task::where('user_id', $userId)
             ->where('status', 'done')
             ->whereBetween('updated_at', [$startDate, $endDate])
@@ -1590,16 +1891,17 @@ class AnalyticsController extends Controller
         })->toArray();
     }
 
-    private function getTaskTypes($userId, $startDate, $endDate)
+    /**
+     * Get task type distribution
+     */
+    public function getTaskTypes($userId, $startDate, $endDate): array
     {
         $tasks = Task::where('user_id', $userId)
             ->whereBetween('created_at', [$startDate, $endDate])
             ->get();
 
-        // Raggruppa per tipo e conta
         $tasksByType = [];
         foreach ($tasks as $task) {
-            // Ottieni il valore stringa dall'enum
             $typeValue = $task->type instanceof \App\Enums\TaskType
                 ? $task->type->value
                 : $task->type;
@@ -1640,39 +1942,22 @@ class AnalyticsController extends Controller
             ];
         }
 
+        // Sort by count descending
+        usort($result, function($a, $b) {
+            return $b['count'] - $a['count'];
+        });
+
         return $result;
     }
 
-    private function calculateStreak($userId)
-    {
-        $streak = 0;
-        $date = Carbon::now()->startOfDay();
-
-        for ($i = 0; $i < 365; $i++) {
-            $hasTask = Task::where('user_id', $userId)
-                ->where('status', 'done')
-                ->whereDate('updated_at', $date)
-                ->exists();
-
-            if (!$hasTask) {
-                // Se non è oggi, lo streak è finito
-                if ($i > 0) break;
-                // Se è oggi e non ci sono task, controlla ieri
-                return 0;
-            }
-
-            $streak++;
-            $date->subDay();
-        }
-
-        return $streak;
-    }
-
-    private function generateInsights($userId, $tasksCompleted, $focusHours, $completionRate)
+    /**
+     * Generate insights based on analytics data
+     */
+    public function generateInsights($userId, $tasksCompleted, $focusHours, $completionRate): array
     {
         $insights = [];
 
-        // Positive insight
+        // Positive insight for high completion
         if ($tasksCompleted > 10) {
             $insights[] = [
                 'id' => 1,
@@ -1683,7 +1968,7 @@ class AnalyticsController extends Controller
             ];
         }
 
-        // Warning for low completion
+        // Warning for low completion rate
         if ($completionRate < 50 && $completionRate > 0) {
             $insights[] = [
                 'id' => 2,
@@ -1694,7 +1979,7 @@ class AnalyticsController extends Controller
             ];
         }
 
-        // Focus time insight
+        // Focus time insights
         if ($focusHours > 10) {
             $insights[] = [
                 'id' => 3,
@@ -1729,12 +2014,115 @@ class AnalyticsController extends Controller
             ];
         }
 
+        // Streak achievement
+        $streak = $this->productivityService->calculateStreak($userId);
+        if ($streak >= 7) {
+            $insights[] = [
+                'id' => 6,
+                'type' => 'positive',
+                'icon' => 'Award',
+                'title' => 'Consistency Streak!',
+                'message' => "Amazing! You've maintained a {$streak}-day streak of completing tasks."
+            ];
+        }
+
+        // Productivity trend
+        $trend = $this->productivityService->calculateTrend($userId);
+        if ($trend > 20) {
+            $insights[] = [
+                'id' => 7,
+                'type' => 'positive',
+                'icon' => 'TrendingUp',
+                'title' => 'Productivity Boost',
+                'message' => "Your productivity is up {$trend}% compared to last week!"
+            ];
+        } elseif ($trend < -20) {
+            $insights[] = [
+                'id' => 8,
+                'type' => 'info',
+                'icon' => 'Activity',
+                'title' => 'Productivity Dip',
+                'message' => "Your productivity is down {$trend}% from last week. Sometimes we need rest!"
+            ];
+        }
+
         return $insights;
     }
+
+    /**
+     * Get detailed statistics for a specific date range
+     */
+    public function getDetailedStats($userId, Carbon $startDate, Carbon $endDate): array
+    {
+        return [
+            'tasks' => [
+                'total' => Task::where('user_id', $userId)
+                    ->whereBetween('created_at', [$startDate, $endDate])
+                    ->count(),
+                'completed' => Task::where('user_id', $userId)
+                    ->where('status', 'done')
+                    ->whereBetween('updated_at', [$startDate, $endDate])
+                    ->count(),
+                'in_progress' => Task::where('user_id', $userId)
+                    ->where('status', 'in_progress')
+                    ->whereBetween('created_at', [$startDate, $endDate])
+                    ->count(),
+                'overdue' => Task::where('user_id', $userId)
+                    ->where('status', '!=', 'done')
+                    ->where('due_date', '<', Carbon::now())
+                    ->whereBetween('created_at', [$startDate, $endDate])
+                    ->count()
+            ],
+            'timeBoxes' => [
+                'total' => TimeBox::where('user_id', $userId)
+                    ->whereBetween('start_at', [$startDate, $endDate])
+                    ->count(),
+                'total_hours' => TimeBox::where('user_id', $userId)
+                    ->whereBetween('start_at', [$startDate, $endDate])
+                    ->get()
+                    ->sum(function ($tb) {
+                        return $tb->start_at->diffInMinutes($tb->end_at) / 60;
+                    })
+            ],
+            'averages' => [
+                'tasks_per_day' => $this->getAverageTasksPerDay($userId, $startDate, $endDate),
+                'completion_time' => $this->productivityService->getAverageCompletionTime($userId),
+                'focus_hours_per_day' => $this->getAverageFocusHoursPerDay($userId, $startDate, $endDate)
+            ]
+        ];
+    }
+
+    /**
+     * Calculate average tasks completed per day
+     */
+    private function getAverageTasksPerDay($userId, Carbon $startDate, Carbon $endDate): float
+    {
+        $days = $startDate->diffInDays($endDate) ?: 1;
+        $completedTasks = Task::where('user_id', $userId)
+            ->where('status', 'done')
+            ->whereBetween('updated_at', [$startDate, $endDate])
+            ->count();
+        
+        return round($completedTasks / $days, 1);
+    }
+
+    /**
+     * Calculate average focus hours per day
+     */
+    private function getAverageFocusHoursPerDay($userId, Carbon $startDate, Carbon $endDate): float
+    {
+        $days = $startDate->diffInDays($endDate) ?: 1;
+        $focusHours = TimeBox::where('user_id', $userId)
+            ->where('type', 'focus')
+            ->whereBetween('start_at', [$startDate, $endDate])
+            ->get()
+            ->sum(function ($tb) {
+                return $tb->start_at->diffInMinutes($tb->end_at) / 60;
+            });
+        
+        return round($focusHours / $days, 1);
+    }
 }
-
-
-
 
 ROTAS 
 

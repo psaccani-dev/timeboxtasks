@@ -1,6 +1,4 @@
 <?php
-
-
 // app/Http/Controllers/DashboardController.php
 
 namespace App\Http\Controllers;
@@ -8,12 +6,20 @@ namespace App\Http\Controllers;
 use App\Models\Task;
 use App\Models\TimeBox;
 use App\Models\User;
+use App\Services\ProductivityService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 
 class DashboardController extends Controller
 {
+    protected ProductivityService $productivityService;
+
+    public function __construct(ProductivityService $productivityService)
+    {
+        $this->productivityService = $productivityService;
+    }
+
     public function index()
     {
         /** @var User $user */
@@ -27,7 +33,6 @@ class DashboardController extends Controller
         $startOfWeek = $now->copy()->startOfWeek();
         $endOfWeek = $now->copy()->endOfWeek();
 
-        // Today's stats - usando query builder direttamente
         $todayTasks = Task::where('user_id', $user->id)
             ->whereDate('due_date', $now->toDateString())
             ->get();
@@ -36,7 +41,6 @@ class DashboardController extends Controller
         $todayTotal = $todayTasks->count();
         $todayProgress = $todayTotal > 0 ? round(($todayCompleted / $todayTotal) * 100) : 0;
 
-        // Active time box
         $activeTimeBox = TimeBox::where('user_id', $user->id)
             ->where('start_at', '<=', $now)
             ->where('end_at', '>=', $now)
@@ -57,7 +61,6 @@ class DashboardController extends Controller
             ];
         }
 
-        // Week stats
         $weekTasks = Task::where('user_id', $user->id)
             ->whereBetween('updated_at', [$startOfWeek, $endOfWeek])
             ->get();
@@ -72,7 +75,6 @@ class DashboardController extends Controller
                 return $tb->start_at->diffInMinutes($tb->end_at);
             }) / 60;
 
-        // Today's schedule
         $todaySchedule = TimeBox::where('user_id', $user->id)
             ->whereDate('start_at', $now->toDateString())
             ->orderBy('start_at')
@@ -89,7 +91,6 @@ class DashboardController extends Controller
                 ];
             });
 
-        // Upcoming tasks
         $upcomingTasks = Task::where('user_id', $user->id)
             ->where('status', '!=', 'done')
             ->where(function ($q) use ($now) {
@@ -101,19 +102,60 @@ class DashboardController extends Controller
             ->limit(5)
             ->get(['id', 'title', 'priority', 'status', 'due_date']);
 
-        // Activity data for chart
+        $activityData = $this->getActivityData($user->id, $now);
+
+        $completionRate = $todayTotal > 0 ? round(($todayCompleted / $todayTotal) * 100) : 0;
+        $weekStreak = $this->productivityService->calculateStreak($user->id);
+        $productivityScore = $this->productivityService->calculateScore(
+            $completionRate,
+            $focusHours,
+            $weekStreak
+        );
+
+        return Inertia::render('Dashboard/Index', [
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email
+            ],
+            'stats' => [
+                'todayCompleted' => $todayCompleted,
+                'todayTotal' => $todayTotal,
+                'todayProgress' => $todayProgress,
+                'weekStreak' => $weekStreak,
+                'productivityScore' => $productivityScore,
+                'productivityTrend' => $this->productivityService->calculateTrend($user->id)
+            ],
+            'activeTimeBox' => $activeTimeBox,
+            'todaySchedule' => $todaySchedule,
+            'upcomingTasks' => $upcomingTasks,
+            'weekStats' => [
+                'tasksCompleted' => $weekTasks->where('status', 'done')->count(),
+                'focusHours' => round($focusHours, 1),
+                'timeBoxes' => $weekTimeBoxes->count(),
+                'avgProductivity' => $this->productivityService->calculateWeeklyAverage($user->id)
+            ],
+            'activityData' => $activityData
+        ]);
+    }
+
+    private function getActivityData(int $userId, Carbon $now): array
+    {
         $activityData = [];
+
         for ($i = 6; $i >= 0; $i--) {
             $date = $now->copy()->subDays($i);
-            $dayTasks = Task::where('user_id', $user->id)
+
+            $dayTasks = Task::where('user_id', $userId)
                 ->whereDate('updated_at', $date)
                 ->count();
-            $dayCompleted = Task::where('user_id', $user->id)
+
+            $dayCompleted = Task::where('user_id', $userId)
                 ->whereDate('updated_at', $date)
                 ->where('status', 'done')
                 ->count();
 
-            $dayTimeBoxes = TimeBox::where('user_id', $user->id)
+            $dayTimeBoxes = TimeBox::where('user_id', $userId)
                 ->whereDate('start_at', $date)
                 ->get();
 
@@ -127,34 +169,10 @@ class DashboardController extends Controller
                 'total' => $dayTasks,
                 'completed' => $dayCompleted,
                 'hours' => round($dayHours, 1),
-                'percentage' => min(100, $dayHours * 10) // Scale for display
+                'percentage' => min(100, $dayHours * 10)
             ];
         }
 
-        return Inertia::render('Dashboard/Index', [
-            'user' => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email
-            ],
-            'stats' => [
-                'todayCompleted' => $todayCompleted,
-                'todayTotal' => $todayTotal,
-                'todayProgress' => $todayProgress,
-                'weekStreak' => 3, // Calculate actual streak
-                'productivityScore' => 78,
-                'productivityTrend' => 12
-            ],
-            'activeTimeBox' => $activeTimeBox,
-            'todaySchedule' => $todaySchedule,
-            'upcomingTasks' => $upcomingTasks,
-            'weekStats' => [
-                'tasksCompleted' => $weekTasks->where('status', 'done')->count(),
-                'focusHours' => round($focusHours, 1),
-                'timeBoxes' => $weekTimeBoxes->count(),
-                'avgProductivity' => 82
-            ],
-            'activityData' => $activityData
-        ]);
+        return $activityData;
     }
 }

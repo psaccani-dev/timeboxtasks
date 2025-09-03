@@ -1,9 +1,8 @@
 <?php
-// app/Http/Controllers/TimeBoxController.php
-
+// app/Http/Controllers/TimeBoxController
 namespace App\Http\Controllers;
 
-use App\Http\Requests\{StoreTimeBoxRequest, UpdateTimeBoxRequest};
+use App\Http\Requests\{StoreTimeBoxRequest, UpdateTimeBoxRequest, UpdateTimeBoxTimeRequest};
 use App\Models\{TimeBox, Task, User};
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
@@ -22,7 +21,6 @@ class TimeBoxController extends Controller
 
         $query = $user->timeBoxes()->with('tasks');
 
-        // Apply filters
         if ($request->filled('date')) {
             $date = Carbon::parse($request->date);
             $query->whereDate('start_at', $date);
@@ -31,7 +29,6 @@ class TimeBoxController extends Controller
             $weekEnd = $weekStart->copy()->endOfWeek();
             $query->whereBetween('start_at', [$weekStart, $weekEnd]);
         } else {
-            // Default: show current week
             $query->whereBetween('start_at', [
                 Carbon::now()->startOfWeek(),
                 Carbon::now()->endOfWeek()
@@ -61,7 +58,6 @@ class TimeBoxController extends Controller
                 ];
             });
 
-        // Get user's tasks for assignment
         $availableTasks = $user->tasks()
             ->where('status', '!=', 'done')
             ->orderBy('priority', 'desc')
@@ -85,13 +81,8 @@ class TimeBoxController extends Controller
         $user = Auth::user();
 
         $data = $request->validated();
-
-
-
-        // Add user_id explicitly
         $data['user_id'] = $user->id;
 
-        // Check for overlaps if not allowed
         if (!($data['allow_overlap'] ?? false)) {
             $overlapping = $user->timeBoxes()
                 ->between($data['start_at'], $data['end_at'])
@@ -104,16 +95,13 @@ class TimeBoxController extends Controller
             }
         }
 
-        // Extract task_ids before creating
         $taskIds = $data['task_ids'] ?? [];
         unset($data['task_ids']);
 
         $timeBox = TimeBox::create($data);
 
-        // Attach tasks if provided
         if (!empty($taskIds)) {
-            // Verify tasks belong to user
-            $validTaskIds = $user->tasks()->whereIn('id', $taskIds)->pluck('id')->toArray();
+            $validTaskIds = $user->tasks()->whereIn('id', $taskIds)->pluck('id');
             $timeBox->tasks()->sync($validTaskIds);
         }
 
@@ -128,7 +116,6 @@ class TimeBoxController extends Controller
 
         $data = $request->validated();
 
-        // Check for overlaps if changing time and not allowing overlap
         if (isset($data['start_at']) || isset($data['end_at'])) {
             $start = $data['start_at'] ?? $timeBox->start_at;
             $end = $data['end_at'] ?? $timeBox->end_at;
@@ -150,7 +137,6 @@ class TimeBoxController extends Controller
 
         $timeBox->update($data);
 
-        // Update tasks if provided
         if (isset($data['task_ids'])) {
             $timeBox->tasks()->sync($data['task_ids']);
         }
@@ -167,15 +153,11 @@ class TimeBoxController extends Controller
         return back()->with('message', 'Time box deleted successfully!');
     }
 
-    /**
-     * Calendar view - monthly display
-     */
     public function calendar(Request $request)
     {
         /** @var User $user */
         $user = Auth::user();
 
-        // Get date range for the month
         $startDate = $request->has('start_date')
             ? Carbon::parse($request->start_date)->startOfDay()
             : Carbon::now()->startOfMonth();
@@ -184,7 +166,6 @@ class TimeBoxController extends Controller
             ? Carbon::parse($request->end_date)->endOfDay()
             : Carbon::now()->endOfMonth();
 
-        // Get time boxes for the month - convert to array
         $timeBoxes = $user->timeBoxes()
             ->with('tasks')
             ->whereBetween('start_at', [$startDate, $endDate])
@@ -199,29 +180,23 @@ class TimeBoxController extends Controller
                     'end_at' => $timeBox->end_at->toISOString(),
                     'allow_overlap' => $timeBox->allow_overlap,
                     'notes' => $timeBox->notes,
-                    'tasks' => $timeBox->tasks->toArray(), // Convert tasks to array too
+                    'tasks' => $timeBox->tasks,
                     'duration_minutes' => $timeBox->start_at->diffInMinutes($timeBox->end_at),
                     'is_active' => $timeBox->start_at <= now() && $timeBox->end_at >= now(),
                     'is_past' => $timeBox->end_at < now(),
                 ];
-            })
-            ->values(); // Reset array keys
+            });
 
-
-        // Get tasks with due dates in the month - convert to array
         $tasks = $user->tasks()
             ->whereBetween('due_date', [$startDate, $endDate])
             ->orderBy('due_date')
             ->get(['id', 'title', 'priority', 'status', 'due_date', 'estimated_minutes']);
-        // Convert to array
 
-        // Get all tasks for selection - convert to array
         $availableTasks = $user->tasks()
             ->where('status', '!=', 'done')
             ->orderBy('priority', 'desc')
             ->orderBy('due_date', 'asc')
             ->get(['id', 'title', 'priority', 'estimated_minutes', 'status']);
-
 
         return Inertia::render('Calendar/Index', [
             'timeBoxes' => $timeBoxes,
@@ -233,16 +208,11 @@ class TimeBoxController extends Controller
             ]
         ]);
     }
-    public function updateTime(Request $request, TimeBox $timeBox)
+
+    public function updateTime(UpdateTimeBoxTimeRequest $request, TimeBox $timeBox)
     {
         $this->authorize('update', $timeBox);
 
-        $request->validate([
-            'start_at' => 'required|date',
-            'end_at' => 'required|date|after:start_at',
-        ]);
-
-        // Check overlaps
         if (!$timeBox->allow_overlap) {
             $overlapping = $timeBox->user->timeBoxes()
                 ->where('id', '!=', $timeBox->id)
@@ -251,7 +221,7 @@ class TimeBoxController extends Controller
 
             if ($overlapping) {
                 return back()->withErrors([
-                    'message' => 'Time slot overlaps with another time box'
+                    'start_at' => 'Time slot overlaps with another time box'
                 ]);
             }
         }
@@ -261,7 +231,6 @@ class TimeBoxController extends Controller
             'end_at' => $request->end_at,
         ]);
 
-        // Simply redirect back and let the index method handle the filtering
         return redirect()->back();
     }
 }
