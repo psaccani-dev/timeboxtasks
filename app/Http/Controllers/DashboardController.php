@@ -87,7 +87,7 @@ class DashboardController extends Controller
                     'duration' => $tb->start_at->diffInMinutes($tb->end_at),
                     'isNow' => $isNow
                 ];
-            })->toArray();
+            });
 
         // Upcoming tasks
         $upcomingTasks = Task::where('user_id', $user->id)
@@ -99,8 +99,7 @@ class DashboardController extends Controller
             ->orderBy('priority', 'desc')
             ->orderBy('due_date', 'asc')
             ->limit(5)
-            ->get(['id', 'title', 'priority', 'status', 'due_date'])
-            ->toArray();
+            ->get(['id', 'title', 'priority', 'status', 'due_date']);
 
         // Activity data for chart
         $activityData = [];

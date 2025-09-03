@@ -205,23 +205,23 @@ class TimeBoxController extends Controller
                     'is_past' => $timeBox->end_at < now(),
                 ];
             })
-            ->values() // Reset array keys
-            ->toArray(); // Convert to array
+            ->values(); // Reset array keys
+
 
         // Get tasks with due dates in the month - convert to array
         $tasks = $user->tasks()
             ->whereBetween('due_date', [$startDate, $endDate])
             ->orderBy('due_date')
-            ->get(['id', 'title', 'priority', 'status', 'due_date', 'estimated_minutes'])
-            ->toArray(); // Convert to array
+            ->get(['id', 'title', 'priority', 'status', 'due_date', 'estimated_minutes']);
+        // Convert to array
 
         // Get all tasks for selection - convert to array
         $availableTasks = $user->tasks()
             ->where('status', '!=', 'done')
             ->orderBy('priority', 'desc')
             ->orderBy('due_date', 'asc')
-            ->get(['id', 'title', 'priority', 'estimated_minutes', 'status'])
-            ->toArray(); // Convert to array
+            ->get(['id', 'title', 'priority', 'estimated_minutes', 'status']);
+
 
         return Inertia::render('Calendar/Index', [
             'timeBoxes' => $timeBoxes,

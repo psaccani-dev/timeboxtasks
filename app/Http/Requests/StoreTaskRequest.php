@@ -22,7 +22,7 @@ class StoreTaskRequest extends FormRequest
             'type' => ['required', new Enum(TaskType::class)],
             'status' => ['sometimes', new Enum(TaskStatus::class)],
             'priority' => ['required', new Enum(TaskPriority::class)],
-            'due_date' => ['nullable', 'date', 'after:now'],
+            'due_date' => ['nullable', 'date'],
             'estimated_minutes' => ['nullable', 'integer', 'min:1', 'max:1440'],
             'labels' => ['nullable', 'array'],
             'labels.*' => ['string', 'max:50'],
