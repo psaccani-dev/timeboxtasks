@@ -9,6 +9,7 @@
 <script setup>
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { Clock } from 'lucide-vue-next'
+import { useTranslations } from '@/composables/useTranslations'
 
 const props = defineProps({
     dueDate: {
@@ -16,6 +17,8 @@ const props = defineProps({
         required: true
     }
 })
+
+const { __ } = useTranslations()
 
 const now = ref(new Date())
 let interval = null

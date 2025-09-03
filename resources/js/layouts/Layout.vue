@@ -52,7 +52,7 @@
                                     </Link>
                                 </DropdownMenuItem>
                                 <DropdownMenuItem as-child>
-                                    <Link href="/settings" class="flex w-full">
+                                    <Link href="/app-settings" class="flex w-full">
                                     <Settings class="mr-2 h-4 w-4" />
                                     Settings
                                     </Link>

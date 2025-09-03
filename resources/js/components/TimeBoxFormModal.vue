@@ -229,6 +229,9 @@ import {
     ArrowRight
 } from 'lucide-vue-next'
 
+import { useTranslations } from '@/composables/useTranslations'
+const { __ } = useTranslations()
+
 const props = defineProps({
     isOpen: {
         type: Boolean,

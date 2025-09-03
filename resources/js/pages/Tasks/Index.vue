@@ -361,6 +361,9 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 
+import { useTranslations } from '@/composables/useTranslations'
+const { __ } = useTranslations()
+
 const props = defineProps({
     tasks: Object,
     filters: {

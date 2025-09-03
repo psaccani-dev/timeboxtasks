@@ -256,6 +256,8 @@ import {
     PauseCircle,
     CheckCircle
 } from 'lucide-vue-next'
+import { useTranslations } from '@/composables/useTranslations'
+const { __ } = useTranslations()
 
 const props = defineProps({
     isOpen: {

@@ -22,6 +22,11 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'bio',
+        'theme',
+        'language',
+        'date_format',
+        'time_format',
     ];
 
     /**
@@ -46,10 +51,18 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
+
+    /**
+     * Get the tasks for the user.
+     */
     public function tasks(): HasMany
     {
         return $this->hasMany(Task::class);
     }
+
+    /**
+     * Get the time boxes for the user.
+     */
     public function timeBoxes(): HasMany
     {
         return $this->hasMany(TimeBox::class);

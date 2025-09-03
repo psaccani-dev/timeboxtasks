@@ -24,7 +24,7 @@
                 'w-5 h-5 transition-colors',
                 isActive(item.href) ? 'text-green-400' : 'text-slate-400'
             ]" />
-            <span>{{ item.name }}</span>
+            <span>{{ __(item.label) }}</span>
             <Badge v-if="item.badge" variant="secondary"
                 class="ml-auto bg-orange-400/20 text-orange-400 border-orange-400/30">
                 {{ item.badge }}
@@ -37,7 +37,7 @@
             <button @click="handleNewTask"
                 class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 transition-all duration-200 shadow-lg shadow-purple-500/20">
                 <Plus class="w-4 h-4" />
-                New Task
+                {{ __('New Task') }}
             </button>
         </div>
 
@@ -45,7 +45,7 @@
         <div class="px-4 py-4 border-t border-slate-800/30">
             <div class="space-y-3">
                 <div class="flex items-center justify-between text-xs">
-                    <span class="text-slate-400">Today's Progress</span>
+                    <span class="text-slate-400">{{ __("Today's Progress") }}</span>
                     <span class="text-green-400 font-medium">8/12</span>
                 </div>
                 <div class="w-full bg-slate-800 rounded-full h-2">
@@ -61,6 +61,7 @@
 <script setup>
 import { computed } from 'vue'
 import { Link, usePage } from '@inertiajs/vue3'
+import { useTranslations } from '@/composables/useTranslations'
 import {
     Home,
     CheckSquare,
@@ -70,29 +71,30 @@ import {
     Settings,
     BarChart3
 } from 'lucide-vue-next'
-import { Badge } from 'lucide-vue-next'
+import { Badge } from '@/components/ui/badge'
 
-// IMPORTANTE: Capturar a função emit retornada pelo defineEmits
+// Usar as traduções do Laravel
+const { __ } = useTranslations()
+
 const emit = defineEmits(['close', 'new-task'])
-
 const page = usePage()
 
+// Agora usa labels em inglês que serão traduzidas
 const navigation = [
-    { name: 'Dashboard', href: '/dashboard', icon: Home },
-    { name: 'Tasks', href: '/tasks', icon: CheckSquare, badge: '4' },
-    { name: 'Time Boxes', href: '/time-boxes', icon: Clock },
-    { name: 'Calendar', href: '/calendar', icon: Calendar },
-    { name: 'Analytics', href: '/analytics', icon: BarChart3 },
-    { name: 'Settings', href: '/settings', icon: Settings },
+    { label: 'Dashboard', href: '/dashboard', icon: Home },
+    { label: 'Tasks', href: '/tasks', icon: CheckSquare },
+    { label: 'Time Boxes', href: '/time-boxes', icon: Clock },
+    { label: 'Calendar', href: '/calendar', icon: Calendar },
+    { label: 'Analytics', href: '/analytics', icon: BarChart3 },
+    { label: 'Settings', href: '/app-settings', icon: Settings },
 ]
 
 const isActive = (href) => {
     return page.url.startsWith(href)
 }
 
-// Função corrigida - usando a função emit
 const handleNewTask = () => {
     emit('new-task')
-    emit('close') // Fechar o sidebar se estiver em mobile
+    emit('close')
 }
 </script>
