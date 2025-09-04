@@ -1,20 +1,34 @@
 # Dockerfile
-FROM php:8.3-cli
+FROM php:8.3-cli-alpine
 
-# Essenciais apenas
-RUN apt-get update && apt-get install -y \
-    git unzip libpq-dev \
-    && docker-php-ext-install pdo_pgsql bcmath \
-    && apt-get clean
+# Instalar dependências essenciais
+RUN apk add --no-cache \
+    git \
+    unzip \
+    postgresql-dev \
+    && docker-php-ext-install pdo pdo_pgsql bcmath
 
-# Composer
-COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+# Instalar Composer
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
+# Configurar diretório
 WORKDIR /app
+
+# Copiar arquivos do composer
+COPY composer.json composer.lock ./
+
+# FORÇAR instalação SEM dev dependencies
+RUN composer install --no-dev --optimize-autoloader --no-scripts
+
+# Copiar resto do projeto
 COPY . .
 
-# Instalar dependências (sem dev)
-RUN composer install --no-dev --optimize-autoloader
+# Gerar cache do Laravel
+RUN php artisan config:cache || true
+RUN php artisan route:cache || true
 
-# Iniciar
+# Porta
+EXPOSE 8000
+
+# Comando
 CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000"]
