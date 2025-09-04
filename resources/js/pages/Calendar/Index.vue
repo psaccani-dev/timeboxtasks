@@ -284,6 +284,13 @@ import {
 import { useTranslations } from '@/composables/useTranslations'
 const { __ } = useTranslations()
 
+const formatLocalDate = (date) => {
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
+}
+
 const props = defineProps({
     timeBoxes: {
         type: Array,
@@ -312,7 +319,7 @@ const formErrors = ref({})
 const formProcessing = ref(false)
 
 // Days of week
-const daysOfWeek = ['Sat', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri']
+const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 const visibleDaysOfWeek = computed(() =>
     showWeekends.value ? daysOfWeek : daysOfWeek.slice(1, 6)
 )
@@ -334,11 +341,11 @@ const calendarDays = computed(() => {
     const startDate = new Date(firstDay)
     const endDate = new Date(lastDay)
 
-    // Adjust to start from Sunday or Monday
+    // Adjust to start from Sunday
     const startDay = startDate.getDay()
     startDate.setDate(startDate.getDate() - startDay)
 
-    // Adjust to end on Saturday or Friday
+    // Adjust to end on Saturday
     const endDay = endDate.getDay()
     if (endDay < 6) {
         endDate.setDate(endDate.getDate() + (6 - endDay))
@@ -348,19 +355,21 @@ const calendarDays = computed(() => {
     const today = new Date()
     today.setHours(0, 0, 0, 0)
 
-    for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-        const date = new Date(d)
-        const dateStr = date.toISOString().split('T')[0]
+    const current = new Date(startDate)
+
+    while (current <= endDate) {
+        const date = new Date(current)
+        const dateStr = formatLocalDate(date) // ✅ CORRIGIDO
 
         // Get events for this day
         const dayTimeBoxes = props.timeBoxes.filter(tb => {
-            const tbDate = new Date(tb.start_at).toISOString().split('T')[0]
+            const tbDate = formatLocalDate(new Date(tb.start_at)) // ✅ CORRIGIDO
             return tbDate === dateStr
         })
 
         const dayTasks = props.tasks.filter(task => {
             if (!task.due_date) return false
-            const taskDate = new Date(task.due_date).toISOString().split('T')[0]
+            const taskDate = formatLocalDate(new Date(task.due_date)) // ✅ CORRIGIDO
             return taskDate === dateStr
         })
 
@@ -381,6 +390,9 @@ const calendarDays = computed(() => {
             hasMore: eventCount > maxVisible,
             moreCount: Math.max(0, eventCount - maxVisible)
         })
+
+        // Incrementa DEPOIS de processar o dia
+        current.setDate(current.getDate() + 1)
     }
 
     return days
@@ -426,7 +438,6 @@ const navigateMonth = (direction) => {
 
     loadMonthData()
 }
-
 const loadMonthData = () => {
     const year = currentDate.value.getFullYear()
     const month = currentDate.value.getMonth()
@@ -434,8 +445,8 @@ const loadMonthData = () => {
     const endDate = new Date(year, month + 1, 0)
 
     router.get(route('calendar.index'), {
-        start_date: startDate.toISOString().split('T')[0],
-        end_date: endDate.toISOString().split('T')[0]
+        start_date: formatLocalDate(startDate), // ✅ CORRIGIDO
+        end_date: formatLocalDate(endDate)      // ✅ CORRIGIDO
     }, {
         preserveState: true,
         preserveScroll: true,
