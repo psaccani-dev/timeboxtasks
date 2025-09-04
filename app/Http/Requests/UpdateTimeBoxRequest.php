@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Enums\TimeBoxType;
+use App\Models\TimeBox;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rules\Enum;
 
@@ -10,7 +11,26 @@ class UpdateTimeBoxRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()->id === $this->route('timeBox')->user_id;
+        // Solução 1: Tentar pegar o timeBox de várias formas
+        $timeBox = $this->route('time_box')
+            ?? $this->route('timeBox')
+            ?? $this->route('time-box');
+
+        // Solução 2: Se ainda for null, pegar o ID diretamente e buscar o TimeBox
+        if (!$timeBox) {
+            // Pega o ID do segmento da URL (time-boxes/{id})
+            $timeBoxId = $this->segment(2); // O ID está no segundo segmento
+
+            if ($timeBoxId) {
+                $timeBox = TimeBox::find($timeBoxId);
+            }
+        }
+
+        if (!$timeBox) {
+            return false;
+        }
+
+        return $this->user()->id === $timeBox->user_id;
     }
 
     public function rules(): array

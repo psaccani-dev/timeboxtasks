@@ -31,7 +31,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::resource('tasks', TaskController::class);
 
     // TimeBoxes - Resource routes  
-    Route::resource('time-boxes', TimeBoxController::class);
+    Route::resource('time-boxes', TimeBoxController::class)->parameters([
+        'time-boxes' => 'timeBox'  // Força o parâmetro ser 'timeBox'
+    ]);
     Route::patch('/time-boxes/{timeBox}/time', [TimeBoxController::class, 'updateTime'])->name('time-boxes.update-time');
     Route::get('/calendar', [TimeBoxController::class, 'calendar'])->name('calendar.index');
     // Rotas adicionais específicas (se necessário futuramente)

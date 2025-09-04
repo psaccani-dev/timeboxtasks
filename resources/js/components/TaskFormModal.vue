@@ -19,7 +19,7 @@
                     </label>
                     <input id="title" v-model="form.title" type="text" required placeholder="What needs to be done?"
                         class="w-full px-4 py-2.5 bg-slate-800/50 border border-slate-700/50 rounded-lg text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-green-400/20 focus:border-green-400/50 transition-all"
-                        :class="{ 'border-red-400/50 focus:ring-red-400/20': errors.title }" @keydown.enter.prevent />
+                        :class="{ 'border-red-400/50 focus:ring-red-400/20': errors.title }" />
                     <p v-if="errors.title" class="text-red-400 text-sm">{{ errors.title }}</p>
                 </div>
 

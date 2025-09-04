@@ -15,6 +15,12 @@
 
                 <div class="flex items-center gap-3">
                     <!-- View Switcher -->
+
+                    <Button @click="toggleFullDay" variant="outline" size="sm"
+                        class="border-slate-700 bg-slate-800/50 hover:bg-slate-800">
+                        {{ startHour === 0 ? 'Show Working Hours' : 'Show Full Day' }}
+                    </Button>
+
                     <div class="flex rounded-lg bg-slate-800/50 p-1">
                         <button @click="viewMode = 'day'" :class="[
                             'px-3 py-1.5 rounded text-sm font-medium transition-all',
@@ -333,6 +339,9 @@ const props = defineProps({
     currentWeek: Object
 })
 
+const startHour = ref(0)
+const endHour = ref(23)
+
 // State
 const viewMode = ref('week')
 const currentDate = ref(new Date())
@@ -343,7 +352,12 @@ const formProcessing = ref(false)
 const draggedItem = ref(null)
 
 // Hours from 0 to 23 (full day)
-const displayHours = Array.from({ length: 24 }, (_, i) => i)
+const displayHours = computed(() => {
+    return Array.from(
+        { length: endHour.value - startHour.value + 1 },
+        (_, i) => i + startHour.value
+    )
+})
 
 // Computed
 const currentDateString = computed(() => currentDate.value.toISOString().split('T')[0])
@@ -692,4 +706,18 @@ const deleteTimeBox = (timeBoxId) => {
 watch(viewMode, () => {
     loadTimeBoxes()
 })
+
+
+
+const toggleFullDay = () => {
+    if (startHour.value === 0) {
+        startHour.value = 6
+        endHour.value = 22
+    } else {
+        startHour.value = 0
+        endHour.value = 23
+    }
+}
+
+
 </script>

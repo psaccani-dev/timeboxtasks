@@ -78,6 +78,7 @@ class DashboardController extends Controller
 
         $todaySchedule = TimeBox::where('user_id', $user->id)
             ->whereDate('start_at', $now->toDateString())
+            ->with('tasks') // IMPORTANTE: carregar as tasks
             ->orderBy('start_at')
             ->get()
             ->map(function ($tb) use ($now) {
@@ -86,6 +87,13 @@ class DashboardController extends Controller
                     'id' => $tb->id,
                     'title' => $tb->title,
                     'type' => $tb->type,
+                    'start_at' => $tb->start_at->toISOString(),
+                    'end_at' => $tb->end_at->toISOString(),
+                    'allow_overlap' => $tb->allow_overlap,
+                    'notes' => $tb->notes,
+                    'tasks' => $tb->tasks,
+                    'user_id' => $tb->user_id,
+                    // Manter para compatibilidade
                     'time' => $tb->start_at->format('H:i'),
                     'duration' => $tb->start_at->diffInMinutes($tb->end_at),
                     'isNow' => $isNow

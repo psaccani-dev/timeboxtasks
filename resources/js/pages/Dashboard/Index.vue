@@ -24,7 +24,7 @@
                         <Plus class="w-4 h-4 mr-2" />
                         Quick Task
                     </Button>
-                    <Button @click="openQuickTimeBox"
+                    <Button @click="openCreateModal"
                         class="bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600">
                         <Clock class="w-4 h-4 mr-2" />
                         Time Box
@@ -77,7 +77,7 @@
                                 </div>
                                 <div v-else class="mt-2">
                                     <p class="text-sm text-slate-500">No active session</p>
-                                    <button @click="openQuickTimeBox"
+                                    <button @click="openCreateModal"
                                         class="text-xs text-blue-400 hover:text-blue-300 mt-1">Start one →</button>
                                 </div>
                             </div>
@@ -168,8 +168,8 @@
                                             item.isNow ? 'border-blue-400' : 'border-slate-700'
                                         ]"></div>
                                         <div class="flex-1 -mt-1">
-                                            <div :class="[
-                                                'p-3 rounded-lg transition-all',
+                                            <div @click.stop="openEditTimeBox(item)" :class="[
+                                                'p-3 rounded-lg transition-all cursor-pointer hover:opacity-80',
                                                 item.isNow ? 'bg-blue-400/10 border border-blue-400/30' : 'bg-slate-800/30'
                                             ]">
                                                 <div class="flex items-start justify-between">
@@ -191,7 +191,7 @@
                                 <div v-if="todaySchedule.length === 0" class="text-center py-8">
                                     <Calendar class="w-12 h-12 text-slate-700 mx-auto mb-3" />
                                     <p class="text-slate-500">No time boxes scheduled for today</p>
-                                    <Button @click="openQuickTimeBox" size="sm" class="mt-3">
+                                    <Button @click="openCreateModal" size="sm" class="mt-3">
                                         Schedule your first session
                                     </Button>
                                 </div>
@@ -201,6 +201,7 @@
 
                     <!-- Activity Chart -->
                     <Card class="bg-slate-900/50 border-slate-800/30 backdrop-blur-xl">
+
                         <CardHeader class="border-b border-slate-800/30">
                             <h3 class="text-lg font-semibold text-slate-200">Weekly Activity</h3>
                         </CardHeader>
@@ -209,7 +210,7 @@
                                 <!-- Simple bar chart -->
                                 <div class="flex items-end justify-between h-full gap-2">
                                     <div v-for="day in activityData" :key="day.date"
-                                        class="flex-1 flex flex-col items-center justify-end gap-2">
+                                        class="flex-1 flex flex-col items-center justify-end gap-2 h-full">
                                         <div class="w-full bg-slate-800 rounded-t relative flex flex-col justify-end"
                                             :style="`height: ${day.percentage}%`">
                                             <div
@@ -308,9 +309,10 @@
         <TaskFormModal :is-open="showTaskModal" :task="null" :errors="{}" :processing="false"
             @close="showTaskModal = false" @submit="handleQuickTaskSubmit" />
 
-        <!-- Quick Time Box Modal -->
-        <TimeBoxFormModal :is-open="showTimeBoxModal" :time-box="null" :available-tasks="[]" :errors="{}"
-            :processing="false" @close="showTimeBoxModal = false" @submit="handleQuickTimeBoxSubmit" />
+        <!-- Time Box Form Modal -->
+        <TimeBoxFormModal :is-open="showTimeBoxModal" :time-box="editingTimeBox" :available-tasks="availableTasks"
+            :errors="formErrors" :processing="formProcessing" @close="closeTimeBoxModal"
+            @submit="handleTimeBoxSubmit" />
     </Layout>
 </template>
 
@@ -341,6 +343,33 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { useTranslations } from '@/composables/useTranslations'
+
+import { onMounted } from 'vue'
+
+// ... resto do código ...
+
+onMounted(() => {
+    console.log('=== Activity Data Debug ===')
+    if (props.activityData) {
+        props.activityData.forEach(day => {
+            console.log(`${day.label} (${day.date}):`, {
+                hours: day.hours,
+                tasks: `${day.completed}/${day.total}`,
+                percentage: day.percentage,
+                hasTimeBoxes: day.hours > 0,
+                hasTasks: day.total > 0
+            })
+        })
+    } else {
+        console.log('Nenhum activityData recebido')
+    }
+})
+
+
+
+
+
+
 const { __ } = useTranslations()
 
 const props = defineProps({
@@ -350,12 +379,19 @@ const props = defineProps({
     upcomingTasks: Array,
     activeTimeBox: Object,
     weekStats: Object,
-    activityData: Array
+    activityData: Array,
+    availableTasks: {
+        type: Array,
+        default: () => []
+    }
 })
 
 // State
 const showTaskModal = ref(false)
 const showTimeBoxModal = ref(false)
+const editingTimeBox = ref(null)
+const formErrors = ref({})
+const formProcessing = ref(false)
 
 // Computed
 const userName = computed(() => props.user?.name?.split(' ')[0] || 'User')
@@ -385,7 +421,7 @@ const motivationalQuote = computed(() => {
         "The journey of a thousand miles begins with a single step. – Lao Tzu",
         "We are what we repeatedly do. Excellence, then, is not an act, but a habit. – Aristotle",
         "Courage is not the absence of fear, but the triumph over it. – Nelson Mandela",
-        "Stars can’t shine without darkness.",
+        "Stars can't shine without darkness.",
         "Out of difficulties grow miracles. – Jean de La Bruyère",
         "The wound is the place where the Light enters you. – Rumi",
         "The only true wisdom is in knowing you know nothing. – Socrates",
@@ -405,9 +441,9 @@ const motivationalQuote = computed(() => {
         "Life is not measured by the number of breaths we take, but by the moments that take our breath away. – Maya Angelou",
         "Everything you can imagine is real. – Pablo Picasso",
         "Energy and persistence conquer all things. – Benjamin Franklin",
-        "Your present circumstances don’t determine where you can go; they merely determine where you start. – Nido Qubein",
-        "A ship is safe in harbor, but that’s not what ships are built for. – John A. Shedd",
-        "The best dreams happen when you’re awake. – Cherie Gilderbloom",
+        "Your present circumstances don't determine where you can go; they merely determine where you start. – Nido Qubein",
+        "A ship is safe in harbor, but that's not what ships are built for. – John A. Shedd",
+        "The best dreams happen when you're awake. – Cherie Gilderbloom",
         "Life is either a daring adventure or nothing at all. – Helen Keller",
         "What you seek is seeking you. – Rumi",
         "Hope is a waking dream. – Aristotle",
@@ -495,8 +531,23 @@ const openQuickTask = () => {
     showTaskModal.value = true
 }
 
-const openQuickTimeBox = () => {
+// Modal methods
+const openCreateModal = () => {
+    editingTimeBox.value = null
     showTimeBoxModal.value = true
+}
+
+const openEditTimeBox = (item) => {
+    // Agora que o todaySchedule vem completo do backend, 
+    // não precisa mais converter nada!
+    editingTimeBox.value = item
+    showTimeBoxModal.value = true
+}
+
+const closeTimeBoxModal = () => {
+    showTimeBoxModal.value = false
+    editingTimeBox.value = null
+    formErrors.value = {}
 }
 
 const handleQuickTaskSubmit = ({ data }) => {
@@ -507,12 +558,38 @@ const handleQuickTaskSubmit = ({ data }) => {
     })
 }
 
-const handleQuickTimeBoxSubmit = ({ data }) => {
-    router.post(route('time-boxes.store'), data, {
-        onSuccess: () => {
-            showTimeBoxModal.value = false
-        }
-    })
+const handleTimeBoxSubmit = ({ data, isEditing, timeBoxId }) => {
+    formProcessing.value = true
+
+    if (isEditing) {
+        router.put(route('time-boxes.update', timeBoxId), data, {
+            onSuccess: () => {
+                closeTimeBoxModal()
+                // Reload to update the schedule
+                router.reload({ only: ['todaySchedule'] })
+            },
+            onError: (errors) => {
+                formErrors.value = errors
+            },
+            onFinish: () => {
+                formProcessing.value = false
+            }
+        })
+    } else {
+        router.post(route('time-boxes.store'), data, {
+            onSuccess: () => {
+                closeTimeBoxModal()
+                // Reload to update the schedule
+                router.reload({ only: ['todaySchedule'] })
+            },
+            onError: (errors) => {
+                formErrors.value = errors
+            },
+            onFinish: () => {
+                formProcessing.value = false
+            }
+        })
+    }
 }
 
 const toggleTask = (taskId) => {
