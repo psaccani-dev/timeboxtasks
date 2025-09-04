@@ -389,7 +389,7 @@ const formProcessing = ref(false)
 
 // Filter state
 const filters = ref({
-    status: props.filters?.status || '',
+    status: props.filters?.status || 'todo',
     priority: props.filters?.priority || '',
     due_filter: props.filters?.due_filter || '',
 })
@@ -575,8 +575,8 @@ const duplicateTask = (task) => {
 }
 
 const deleteTask = (taskId) => {
-    if (confirm('Are you sure you want to delete this task?')) {
-        router.delete(route('tasks.destroy', taskId))
-    }
+
+    router.delete(route('tasks.destroy', taskId))
+
 }
 </script>

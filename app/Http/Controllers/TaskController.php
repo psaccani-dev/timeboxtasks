@@ -23,19 +23,27 @@ class TaskController extends Controller
 
         $query = $user->tasks()->with('timeBoxes');
 
-        $filters = $request->only(['status', 'priority', 'due_filter', 'search']);
 
-        if ($request->filled('status')) {
-            $query->where('status', $request->status);
+
+        $filters = [
+            'status'     => $request->query('status', 'todo'),
+            'priority'   => $request->query('priority', ''),
+            'due_filter' => $request->query('due_filter', ''),
+            'search'     => $request->query('search', ''),
+        ];
+
+        if ($filters['status']) {
+            $query->where('status', $filters['status']);
         }
 
-        if ($request->filled('priority')) {
-            $query->where('priority', $request->priority);
+
+        if ($filters['priority']) {
+            $query->where('priority', $filters['priority']);
         }
 
-        if ($request->filled('due_filter')) {
+        if ($filters['due_filter']) {
             $now = now();
-            switch ($request->due_filter) {
+            switch ($filters['due_filter']) {
                 case 'overdue':
                     $query->where('due_date', '<', $now)
                         ->where('status', '!=', 'done');
@@ -58,8 +66,8 @@ class TaskController extends Controller
             }
         }
 
-        if ($request->filled('search')) {
-            $search = $request->search;
+        if ($filters['search']) {
+            $search = $filters['search'];
             $query->where(function ($q) use ($search) {
                 $q->where('title', 'like', "%{$search}%")
                     ->orWhere('description', 'like', "%{$search}%");

@@ -176,6 +176,12 @@
 
                 <!-- Form Actions -->
                 <DialogFooter class="gap-3 pt-4 border-t border-slate-800/30">
+                    <Button v-if="isEditing" type="button" variant="destructive"
+                        @click="deleteTimeBox(props.timeBox.id)"
+                        class="border-slate-700 bg-slate-800/50 hover:bg-slate-800">
+                        Delete
+                    </Button>
+
                     <Button type="button" variant="outline" @click="closeModal"
                         class="border-slate-700 bg-slate-800/50 hover:bg-slate-800">
                         Cancel
@@ -201,7 +207,7 @@
 
 <script setup>
 import { ref, watch, computed } from 'vue'
-import { useForm } from '@inertiajs/vue3'
+import { router, useForm } from '@inertiajs/vue3'
 import {
     Dialog,
     DialogContent,
@@ -388,5 +394,13 @@ const submit = () => {
         isEditing: isEditing.value,
         timeBoxId: props.timeBox?.id
     })
+}
+
+
+const deleteTimeBox = (timeBoxId) => {
+
+    router.delete(route('time-boxes.destroy', timeBoxId))
+    emit('close')
+
 }
 </script>

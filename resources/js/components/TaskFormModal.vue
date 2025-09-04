@@ -208,6 +208,11 @@
 
                 <!-- Form Actions -->
                 <DialogFooter class="gap-3 pt-4 border-t border-slate-800/30">
+                    <Button v-if="isEditing" type="button" variant="destructive" @click="deleteTask(task.id)"
+                        class="border-slate-700 bg-slate-800/50 hover:bg-slate-800">
+                        Delete
+                    </Button>
+
                     <Button type="button" variant="outline" @click="closeModal"
                         class="border-slate-700 bg-slate-800/50 hover:bg-slate-800">
                         Cancel
@@ -233,7 +238,7 @@
 
 <script setup>
 import { ref, watch, computed } from 'vue'
-import { useForm } from '@inertiajs/vue3'
+import { router, useForm } from '@inertiajs/vue3'
 import {
     Dialog,
     DialogContent,
@@ -257,6 +262,7 @@ import {
     CheckCircle
 } from 'lucide-vue-next'
 import { useTranslations } from '@/composables/useTranslations'
+
 const { __ } = useTranslations()
 
 const props = defineProps({
@@ -468,5 +474,15 @@ const submit = () => {
         isEditing: isEditing.value,
         taskId: props.task?.id
     })
+}
+
+
+
+
+const deleteTask = (taskId) => {
+
+    router.delete(route('tasks.destroy', taskId))
+    emit('close')
+
 }
 </script>
