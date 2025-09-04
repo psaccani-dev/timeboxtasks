@@ -1,0 +1,18 @@
+{
+    "build": {
+        "nixpacksPlan": {
+            "providers": [
+                "php"
+            ],
+            "phases": {
+                "setup": {
+                    "nixPkgs": [
+                        "php83",
+                        "php83Extensions.bcmath",
+                        "php83Extensions.pdo_pgsql"
+                    ]
+                }
+            }
+        }
+    }
+}
