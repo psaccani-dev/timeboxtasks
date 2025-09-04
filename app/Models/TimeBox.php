@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Carbon\Carbon;
 
 class TimeBox extends Model
 {
@@ -60,5 +61,16 @@ class TimeBox extends Model
     public function scopeOfType($query, TimeBoxType $type)
     {
         return $query->where('type', $type->value);
+    }
+    public function getStartAtAttribute($value)
+    {
+        // Adiciona 2 horas ao ler do banco
+        return Carbon::parse($value)->addHours(2);
+    }
+
+    public function getEndAtAttribute($value)
+    {
+        // Adiciona 2 horas ao ler do banco
+        return Carbon::parse($value)->addHours(2);
     }
 }

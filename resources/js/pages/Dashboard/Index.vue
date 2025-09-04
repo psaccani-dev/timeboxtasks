@@ -3,13 +3,19 @@
         <div class="p-6 space-y-6">
             <!-- Welcome Header -->
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div class="space-y-1">
+                <div class="space-y-3">
                     <h2 class="text-3xl font-bold text-slate-200">
                         Welcome back, {{ userName }}!
                     </h2>
-                    <p class="text-slate-400">
-                        {{ currentDateFormatted }} • {{ motivationalQuote }}
-                    </p>
+                    <div class="flex items-center gap-3 flex-wrap">
+                        <span class="text-slate-400">{{ currentDateFormatted }}</span>
+                        <div
+                            :class="['px-4 py-1.5 bg-gradient-to-r from-blue-400/20 to-cyan-400/20 rounded-full border border-blue-400/30', motivationalColorClass.bg, motivationalColorClass.border]">
+                            <p :class="['text-sm font-medium italic', motivationalColorClass.text]">
+                                {{ motivationalQuote }}
+                            </p>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="flex items-center gap-3">
@@ -71,7 +77,8 @@
                                 </div>
                                 <div v-else class="mt-2">
                                     <p class="text-sm text-slate-500">No active session</p>
-                                    <button class="text-xs text-blue-400 hover:text-blue-300 mt-1">Start one →</button>
+                                    <button @click="openQuickTimeBox"
+                                        class="text-xs text-blue-400 hover:text-blue-300 mt-1">Start one →</button>
                                 </div>
                             </div>
                             <div class="w-10 h-10 rounded-lg bg-blue-400/20 flex items-center justify-center">
@@ -275,7 +282,7 @@
                                 <div class="flex items-center justify-between">
                                     <span class="text-sm text-slate-400">Tasks Completed</span>
                                     <span class="text-sm font-semibold text-green-400">{{ weekStats.tasksCompleted
-                                        }}</span>
+                                    }}</span>
                                 </div>
                                 <div class="flex items-center justify-between">
                                     <span class="text-sm text-slate-400">Focus Hours</span>
@@ -288,7 +295,7 @@
                                 <div class="flex items-center justify-between">
                                     <span class="text-sm text-slate-400">Avg Productivity</span>
                                     <span class="text-sm font-semibold text-orange-400">{{ weekStats.avgProductivity
-                                        }}%</span>
+                                    }}%</span>
                                 </div>
                             </div>
                         </CardContent>
@@ -363,20 +370,87 @@ const currentDateFormatted = computed(() => {
 
 const motivationalQuote = computed(() => {
     const quotes = [
-        "Let's make today productive!",
-        "Focus on what matters most",
-        "One task at a time",
-        "You've got this!",
-        "Stay focused, stay strong"
+        "He who has a why to live can bear almost any how. – Friedrich Nietzsche",
+        "What we think, we become. – Buddha",
+        "Do not wait for extraordinary circumstances to do good; try to use ordinary situations. – Jean Paul Richter",
+        "Act only according to that maxim whereby you can, at the same time, will that it should become a universal law. – Immanuel Kant",
+        "Man is nothing else but what he makes of himself. – Jean-Paul Sartre",
+        "The only way to deal with the future is to function efficiently in the now. – Alan Watts",
+        "Knowing yourself is the beginning of all wisdom. – Aristotle",
+        "All men dream, but not equally. – T.E. Lawrence",
+        "You are the sky. Everything else is just the weather. – Pema Chödrön",
+        "Be like a tree: stay grounded, keep growing, and let your branches reach for the sky.",
+        "What lies behind us and what lies before us are tiny matters compared to what lies within us. – Ralph Waldo Emerson",
+        "An unexamined life is not worth living. – Socrates",
+        "The journey of a thousand miles begins with a single step. – Lao Tzu",
+        "We are what we repeatedly do. Excellence, then, is not an act, but a habit. – Aristotle",
+        "Courage is not the absence of fear, but the triumph over it. – Nelson Mandela",
+        "Stars can’t shine without darkness.",
+        "Out of difficulties grow miracles. – Jean de La Bruyère",
+        "The wound is the place where the Light enters you. – Rumi",
+        "The only true wisdom is in knowing you know nothing. – Socrates",
+        "Time is the wisest counselor of all. – Pericles",
+        "Great minds discuss ideas; average minds discuss events; small minds discuss people. – Eleanor Roosevelt",
+        "Happiness depends upon ourselves. – Aristotle",
+        "In the middle of every difficulty lies opportunity. – Albert Einstein",
+        "Do what you can, with what you have, where you are. – Theodore Roosevelt",
+        "Rise above the storm and you will find the sunshine. – Mario Fernández",
+        "The soul becomes dyed with the color of its thoughts. – Marcus Aurelius",
+        "The man who moves a mountain begins by carrying away small stones. – Confucius",
+        "To improve is to change; to be perfect is to change often. – Winston Churchill",
+        "Fall seven times and stand up eight. – Japanese Proverb",
+        "The secret of getting ahead is getting started. – Mark Twain",
+        "The best way out is always through. – Robert Frost",
+        "Do not go where the path may lead, go instead where there is no path and leave a trail. – Ralph Waldo Emerson",
+        "Life is not measured by the number of breaths we take, but by the moments that take our breath away. – Maya Angelou",
+        "Everything you can imagine is real. – Pablo Picasso",
+        "Energy and persistence conquer all things. – Benjamin Franklin",
+        "Your present circumstances don’t determine where you can go; they merely determine where you start. – Nido Qubein",
+        "A ship is safe in harbor, but that’s not what ships are built for. – John A. Shedd",
+        "The best dreams happen when you’re awake. – Cherie Gilderbloom",
+        "Life is either a daring adventure or nothing at all. – Helen Keller",
+        "What you seek is seeking you. – Rumi",
+        "Hope is a waking dream. – Aristotle",
+        "Everything has beauty, but not everyone sees it. – Confucius",
+        "Go confidently in the direction of your dreams. Live the life you have imagined. – Henry David Thoreau",
+        "Do not pray for an easy life, pray for the strength to endure a difficult one. – Bruce Lee",
+        "Turn your wounds into wisdom. – Oprah Winfrey",
+        "Every strike brings me closer to the next home run. – Babe Ruth",
+        "Even the darkest night will end and the sun will rise. – Victor Hugo",
+        "Arise, awake, and stop not till the goal is reached. – Swami Vivekananda",
+        "Dream big and dare to fail. – Norman Vaughan",
+        "Be the change that you wish to see in the world. – Mahatma Gandhi"
     ]
     return quotes[Math.floor(Math.random() * quotes.length)]
 })
 
+
+const motivationalColorClass = computed(() => {
+    const hour = new Date().getHours()
+    const isOrangeHour = hour % 2 === 0 // horas pares = laranja, ímpares = roxo
+
+    if (isOrangeHour) {
+        return {
+            gradient: 'from-orange-400 to-yellow-400',
+            text: 'text-orange-300',
+            bg: 'from-orange-400/20 to-yellow-400/20',
+            border: 'border-orange-400/30'
+        }
+    } else {
+        return {
+            gradient: 'from-purple-400 to-pink-400',
+            text: 'text-purple-300',
+            bg: 'from-purple-400/20 to-pink-400/20',
+            border: 'border-purple-400/30'
+        }
+    }
+})
+
 const weekDays = computed(() => {
-    return [
-        { name: 'Mon', completed: true },
-        { name: 'Tue', completed: true },
-        { name: 'Wed', completed: true },
+    return props.stats?.weekDays || [
+        { name: 'Mon', completed: false },
+        { name: 'Tue', completed: false },
+        { name: 'Wed', completed: false },
         { name: 'Thu', completed: false },
         { name: 'Fri', completed: false },
         { name: 'Sat', completed: false },

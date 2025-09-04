@@ -10,6 +10,7 @@ use App\Services\ProductivityService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
+use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
@@ -123,6 +124,7 @@ class DashboardController extends Controller
                 'todayTotal' => $todayTotal,
                 'todayProgress' => $todayProgress,
                 'weekStreak' => $weekStreak,
+                'weekDays' => $this->getWeekDaysStatus($user->id),
                 'productivityScore' => $productivityScore,
                 'productivityTrend' => $this->productivityService->calculateTrend($user->id)
             ],
@@ -138,6 +140,37 @@ class DashboardController extends Controller
             'activityData' => $activityData
         ]);
     }
+
+    private function getWeekDaysStatus(int $userId): array
+    {
+        $now = Carbon::now();
+        $startOfWeek = $now->copy()->startOfWeek(); // Segunda-feira
+        $weekDays = [];
+
+        for ($i = 0; $i < 7; $i++) {
+            $currentDay = $startOfWeek->copy()->addDays($i);
+            $dayName = $currentDay->format('D'); // Mon, Tue, Wed...
+
+            // Verifica se houve tarefas completadas neste dia
+            $hasCompletedTasks = Task::where('user_id', $userId)
+                ->whereDate('updated_at', $currentDay)
+                ->where('status', 'done')
+                ->exists();
+
+            // Só marca como completed se o dia já passou ou é hoje E teve tarefas completadas
+            $isPastOrToday = $currentDay->lte($now);
+            $completed = $isPastOrToday && $hasCompletedTasks;
+
+            $weekDays[] = [
+                'name' => $dayName,
+                'completed' => $completed,
+                'date' => $currentDay->toDateString()
+            ];
+        }
+
+        return $weekDays;
+    }
+
 
     private function getActivityData(int $userId, Carbon $now): array
     {

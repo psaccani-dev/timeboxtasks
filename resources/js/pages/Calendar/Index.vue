@@ -312,7 +312,7 @@ const formErrors = ref({})
 const formProcessing = ref(false)
 
 // Days of week
-const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+const daysOfWeek = ['Sat', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri']
 const visibleDaysOfWeek = computed(() =>
     showWeekends.value ? daysOfWeek : daysOfWeek.slice(1, 6)
 )

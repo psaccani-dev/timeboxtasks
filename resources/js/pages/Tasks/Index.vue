@@ -6,10 +6,10 @@
                 <div class="space-y-1">
                     <h2
                         class="text-2xl font-bold bg-gradient-to-r from-green-400 to-emerald-400 bg-clip-text text-transparent">
-                        Tasks
+                        Tasks .... muoviti
                     </h2>
                     <p class="text-slate-400 text-sm">
-                        Manage your tasks and stay productive
+                        Agíre dal lat agere, andare, venire, condurre, spingere innanzi, fare, operare, muovere
                     </p>
                 </div>
 
