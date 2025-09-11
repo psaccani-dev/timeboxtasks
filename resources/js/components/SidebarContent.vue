@@ -79,14 +79,14 @@ const { __ } = useTranslations()
 const emit = defineEmits(['close', 'new-task'])
 const page = usePage()
 
-// Agora usa labels em inglês que serão traduzidas
+
 const navigation = [
     { label: 'Dashboard', href: '/dashboard', icon: Home },
     { label: 'Tasks', href: '/tasks', icon: CheckSquare },
     { label: 'Time Boxes', href: '/time-boxes', icon: Clock },
     { label: 'Calendar', href: '/calendar', icon: Calendar },
-    { label: 'Analytics', href: '/analytics', icon: BarChart3 },
-    { label: 'Settings', href: '/app-settings', icon: Settings },
+    { label: 'Analytics', href: '/analytics', icon: BarChart3 }
+    // { label: 'Settings', href: '/app-settings', icon: Settings },
 ]
 
 const isActive = (href) => {

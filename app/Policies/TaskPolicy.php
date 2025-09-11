@@ -8,7 +8,7 @@ class TaskPolicy
 {
     public function viewAny(User $user): bool
     {
-        return true; // MVP: user autenticado pode ver suas tasks
+        return true; // 
     }
 
     public function view(User $user, Task $task): bool

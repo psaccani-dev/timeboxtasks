@@ -36,13 +36,7 @@
                         </div>
                     </div>
 
-                    <div>
-                        <label class="block text-sm font-medium text-gray-300 mb-2">Bio</label>
-                        <textarea v-model="profileForm.bio" rows="3" class="w-full px-4 py-2 bg-gray-900/50 border border-gray-700 rounded-lg 
-                                         text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 
-                                         focus:ring-2 focus:ring-blue-500/20 transition-all resize-none"
-                            placeholder="Tell us about yourself..."></textarea>
-                    </div>
+
 
                     <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg 
                                    transition-colors duration-200 font-medium">

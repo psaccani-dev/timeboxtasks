@@ -16,7 +16,7 @@
                 <div class="flex items-center gap-3">
                     <!-- Period Selector -->
                     <div class="flex rounded-lg bg-slate-800/50 p-1">
-                        <button v-for="period in periods" :key="period.value" @click="selectedPeriod = period.value"
+                        <button v-for="period in periods" :key="period.value" @click="changePeriod(period.value)"
                             :class="[
                                 'px-3 py-1.5 rounded text-sm font-medium transition-all',
                                 selectedPeriod === period.value
@@ -27,11 +27,8 @@
                         </button>
                     </div>
 
-                    <!-- Export Button -->
-                    <Button variant="outline" size="sm" class="border-slate-700 bg-slate-800/50 hover:bg-slate-800">
-                        <Download class="w-4 h-4 mr-2" />
-                        Export
-                    </Button>
+
+
                 </div>
             </div>
 
@@ -119,10 +116,10 @@
                                 <!-- Y-axis labels -->
                                 <div
                                     class="absolute left-0 top-0 bottom-0 flex flex-col justify-between text-xs text-slate-500 pr-2">
-                                    <span>100</span>
-                                    <span>75</span>
-                                    <span>50</span>
-                                    <span>25</span>
+                                    <span>{{ maxTaskValue }}</span>
+                                    <span>{{ Math.round(maxTaskValue * 0.75) }}</span>
+                                    <span>{{ Math.round(maxTaskValue * 0.5) }}</span>
+                                    <span>{{ Math.round(maxTaskValue * 0.25) }}</span>
                                     <span>0</span>
                                 </div>
 
@@ -138,7 +135,7 @@
                                     </div>
 
                                     <!-- Line chart -->
-                                    <svg class="absolute inset-0 w-full h-full">
+                                    <svg v-if="taskChartPoints.length > 0" class="absolute inset-0 w-full h-full">
                                         <defs>
                                             <linearGradient id="gradient1" x1="0%" y1="0%" x2="0%" y2="100%">
                                                 <stop offset="0%" style="stop-color:rgb(34,197,94);stop-opacity:0.3" />
@@ -176,14 +173,14 @@
                     <CardContent class="p-4">
                         <div class="h-64 flex items-center justify-center">
                             <!-- Donut Chart -->
-                            <div class="relative">
+                            <div class="relative" v-if="timeDistribution.length > 0">
                                 <svg class="w-48 h-48 transform -rotate-90">
                                     <circle cx="96" cy="96" r="72" fill="none" stroke="rgb(30,41,59)"
                                         stroke-width="24" />
 
-                                    <circle v-for="(segment, i) in timeDistribution" :key="i" cx="96" cy="96" r="72"
-                                        fill="none" :stroke="segment.color" stroke-width="24"
-                                        :stroke-dasharray="`${segment.value} ${300 - segment.value}`"
+                                    <circle v-for="(segment, i) in timeDistributionSegments" :key="i" cx="96" cy="96"
+                                        r="72" fill="none" :stroke="segment.color" stroke-width="24"
+                                        :stroke-dasharray="`${segment.dashArray} ${circumference - segment.dashArray}`"
                                         :stroke-dashoffset="-segment.offset" class="transition-all duration-500" />
                                 </svg>
 
@@ -194,9 +191,15 @@
                                 </div>
                             </div>
 
+                            <!-- Empty state -->
+                            <div v-else class="text-center text-slate-400">
+                                <Clock class="w-12 h-12 mx-auto mb-2 opacity-50" />
+                                <p class="text-sm">No time data available</p>
+                            </div>
+
                             <!-- Legend -->
-                            <div class="ml-8 space-y-2">
-                                <div v-for="item in timeDistributionLegend" :key="item.label"
+                            <div v-if="timeDistribution.length > 0" class="ml-8 space-y-2">
+                                <div v-for="item in timeDistribution.filter(i => i.hours > 0)" :key="item.type"
                                     class="flex items-center gap-2">
                                     <div class="w-3 h-3 rounded-full" :style="`background: ${item.color}`"></div>
                                     <span class="text-sm text-slate-300">{{ item.label }}</span>
@@ -271,9 +274,9 @@
                     </CardHeader>
                     <CardContent class="p-4">
                         <div class="grid grid-cols-2 gap-3">
-                            <div v-for="type in taskTypes" :key="type.name"
+                            <div v-for="type in taskTypes.slice(0, 4)" :key="type.name"
                                 class="flex flex-col items-center p-3 rounded-lg bg-slate-800/30">
-                                <component :is="type.icon" :class="type.colorClass" class="w-6 h-6 mb-2" />
+                                <component :is="getTaskIcon(type.icon)" :class="type.colorClass" class="w-6 h-6 mb-2" />
                                 <span class="text-xs text-slate-400">{{ type.name }}</span>
                                 <span class="text-lg font-bold text-slate-200">{{ type.count }}</span>
                             </div>
@@ -299,7 +302,7 @@
                                     'bg-blue-400/10 border-blue-400/30'
                         ]">
                             <div class="flex items-start gap-3">
-                                <component :is="insight.icon" :class="[
+                                <component :is="getInsightIcon(insight.icon)" :class="[
                                     'w-5 h-5 mt-0.5',
                                     insight.type === 'positive' ? 'text-green-400' :
                                         insight.type === 'warning' ? 'text-orange-400' :
@@ -320,6 +323,7 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import { router } from '@inertiajs/vue3'
 import Layout from '@/layouts/Layout.vue'
 import {
     CheckCircle2,
@@ -335,7 +339,14 @@ import {
     BookOpen,
     Briefcase,
     Home,
-    Coffee
+    Coffee,
+    HelpCircle,
+    StickyNote,
+    Bell,
+    Shuffle,
+    Activity,
+    Award,
+    Circle
 } from 'lucide-vue-next'
 import {
     Card,
@@ -351,87 +362,180 @@ import { useTranslations } from '@/composables/useTranslations'
 const { __ } = useTranslations()
 
 const props = defineProps({
-    metrics: Object,
-    chartData: Object,
-    insights: Array
+    metrics: {
+        type: Object,
+        default: () => ({
+            tasksCompleted: { value: 0, change: 0 },
+            focusHours: { value: 0, change: 0 },
+            completionRate: { value: 0, change: 0 },
+            productivity: { value: 0, change: 0 },
+            streak: { value: 0, change: 0 }
+        })
+    },
+    chartData: {
+        type: Object,
+        default: () => ({})
+    },
+    insights: {
+        type: Array,
+        default: () => []
+    },
+    currentPeriod: {
+        type: String,
+        default: '30d'
+    }
 })
 
 // State
-const selectedPeriod = ref('30d')
+const selectedPeriod = ref(props.currentPeriod)
 
 const periods = [
     { label: '7 Days', value: '7d' },
-    { label: '30 Days', value: '30d' },
-    { label: '90 Days', value: '90d' },
-    { label: 'Year', value: '1y' }
+    { label: '30 Days', value: '30d' }
+
 ]
 
-// Mock data (replace with real data from backend)
-const metrics = computed(() => props.metrics || {
-    tasksCompleted: { value: 0, change: 0 },
-    focusHours: { value: 0, change: 0 },
-    completionRate: { value: 0, change: 0 },
-    productivity: { value: 0, change: 0 },
-    streak: { value: 0, change: 0 }
+// Computed properties
+const metrics = computed(() => props.metrics)
+
+// Task Completion Chart
+const taskTrend = computed(() => {
+    return props.chartData?.taskTrend || []
+})
+
+const chartLabels = computed(() => {
+    return props.chartData?.labels || []
+})
+
+const maxTaskValue = computed(() => {
+    const values = taskTrend.value.map(d => d.value)
+    return Math.max(...values, 10) // minimum 10 for scale
 })
 
 const taskChartPoints = computed(() => {
-    // Generate points for line chart
-    const data = [65, 72, 68, 80, 75, 82, 78]
+    const data = taskTrend.value
+    if (!data || data.length === 0) return []
+
     const width = 100
     const height = 100
-    const step = width / (data.length - 1)
+    const step = width / Math.max(data.length - 1, 1)
+    const max = maxTaskValue.value
 
-    return data.map((value, i) => ({
+    return data.map((item, i) => ({
         x: i * step,
-        y: height - (value * height / 100)
+        y: height - ((item.value / max) * height)
     }))
 })
 
 const taskChartLine = computed(() => {
     const points = taskChartPoints.value
+    if (points.length === 0) return ''
     return 'M' + points.map(p => `${p.x},${p.y}`).join(' L')
 })
 
 const taskChartArea = computed(() => {
-    const points = taskChartPoints.value
     const line = taskChartLine.value
+    if (!line) return ''
     return line + ` L${100},${100} L0,${100} Z`
 })
 
-const chartLabels = computed(() => {
-    if (selectedPeriod.value === '7d') {
-        return ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-    } else if (selectedPeriod.value === '30d') {
-        return ['Week 1', 'Week 2', 'Week 3', 'Week 4']
-    }
-    return ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun']
+// Time Distribution
+const timeDistribution = computed(() => {
+    return props.chartData?.timeDistribution || []
 })
 
-const timeDistribution = computed(() => props.chartData?.timeDistribution || [])
-const timeDistributionLegend = [
-    { label: 'Focus', hours: 48, color: 'rgb(96, 165, 250)' },
-    { label: 'Meetings', hours: 32, color: 'rgb(168, 85, 247)' },
-    { label: 'Breaks', hours: 16, color: 'rgb(52, 211, 153)' },
-    { label: 'Other', hours: 24, color: 'rgb(251, 146, 60)' }
-]
+const totalHours = computed(() => {
+    return timeDistribution.value.reduce((sum, item) => sum + item.hours, 0)
+})
 
-const totalHours = computed(() =>
-    timeDistributionLegend.reduce((sum, item) => sum + item.hours, 0)
-)
+const circumference = 2 * Math.PI * 72
 
-const priorityDistribution = computed(() => props.chartData?.priorityDistribution || [])
+const timeDistributionSegments = computed(() => {
+    let cumulativeOffset = 0
+    const total = totalHours.value
 
-const productiveHours = computed(() => props.chartData?.productiveHours || [])
+    if (total === 0) return []
 
-const taskTypes = computed(() => props.chartData?.taskTypes || [])
+    return timeDistribution.value
+        .filter(item => item.hours > 0)
+        .map((item) => {
+            const percentage = (item.hours / total) * 100
+            const dashArray = (percentage / 100) * circumference
+            const offset = cumulativeOffset
+            cumulativeOffset += dashArray
 
+            return {
+                ...item,
+                dashArray,
+                offset,
+                percentage
+            }
+        })
+})
+
+// Priority Distribution
+const priorityDistribution = computed(() => {
+    return props.chartData?.priorityDistribution || []
+})
+
+// Productive Hours
+const productiveHours = computed(() => {
+    return props.chartData?.productiveHours || []
+})
+
+// Task Types
+const taskTypes = computed(() => {
+    return props.chartData?.taskTypes || []
+})
+
+// Insights
 const insights = computed(() => props.insights || [])
+
+// Icon mapping for task types
+const taskIconMap = {
+    'BookOpen': BookOpen,
+    'Briefcase': Briefcase,
+    'HelpCircle': HelpCircle,
+    'StickyNote': StickyNote,
+    'Bell': Bell,
+    'Home': Home,
+    'Shuffle': Shuffle,
+    'Coffee': Coffee,
+    'Circle': Circle
+}
+
+const insightIconMap = {
+    'TrendingUp': TrendingUp,
+    'TrendingDown': TrendingDown,
+    'AlertCircle': AlertCircle,
+    'Lightbulb': Lightbulb,
+    'Clock': Clock,
+    'Activity': Activity,
+    'Award': Award,
+    'Target': Target
+}
 
 // Methods
 const getChangeClass = (change) => {
     if (change > 0) return 'bg-green-400/20 text-green-400'
     if (change < 0) return 'bg-red-400/20 text-red-400'
     return 'bg-slate-600/20 text-slate-400'
+}
+
+const getTaskIcon = (iconName) => {
+    return taskIconMap[iconName] || Circle
+}
+
+const getInsightIcon = (iconName) => {
+    return insightIconMap[iconName] || Lightbulb
+}
+
+// Handle period change
+const changePeriod = (newPeriod) => {
+    selectedPeriod.value = newPeriod
+    router.get('/analytics', { period: newPeriod }, {
+        preserveState: true,
+        preserveScroll: true
+    })
 }
 </script>

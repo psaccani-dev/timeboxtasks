@@ -62,7 +62,8 @@ class AnalyticsController extends Controller
         return Inertia::render('Analytics/Index', [
             'metrics' => $metrics,
             'chartData' => $chartData,
-            'insights' => $insights
+            'insights' => $insights,
+            'currentPeriod' => $period
         ]);
     }
 }

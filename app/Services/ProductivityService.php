@@ -9,7 +9,7 @@ use Carbon\Carbon;
 class ProductivityService
 {
     /**
-     * Calculate productivity score based on multiple factors
+     * Calculate productivity score based on multiple factors, completation Rate, focus Hours e streak 
      */
     public function calculateScore(float $completionRate, float $focusHours, int $streak): int
     {
@@ -19,9 +19,9 @@ class ProductivityService
         // 30% baseado em consistência/streak (normalizado para 100)
 
         return min(100, round(
-            ($completionRate * 0.4) +
-                (min($focusHours / 4, 100) * 0.3) +  // 4 horas = 100%
-                (min($streak * 5, 100) * 0.3)        // 20 dias = 100%
+            ($completionRate * 0.3) +
+                (min($focusHours / 4, 100) * 0.5) +  // 4 horas = 100%
+                (min($streak * 5, 100) * 0.2)        // 20 dias = 100%
         ));
     }
 
